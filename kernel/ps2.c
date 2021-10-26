@@ -12,7 +12,7 @@ i16 ps2_send_cmd(u8 cmd) {
 	u32 timeout_at = pit_time_msec() + PS2_TIMEOUT_MSEC;
 	while (inb(PS2_STATUS) & PS2_SR_INP) {
 		if (pit_time_msec() >= timeout_at) {
-			dbg_printf(DBG_YLW"ps2_send_cmd: timed out\n"DBG_RST);
+			dbg_puts(DBG_YLW"ps2_send_cmd: timed out\n"DBG_RST);
 			return -1;
 		}
 	}
@@ -24,7 +24,7 @@ i16 ps2_send_data(u8 data) {
 	u32 timeout_at = pit_time_msec() + PS2_TIMEOUT_MSEC;
 	while (inb(PS2_STATUS) & PS2_SR_INP) {
 		if (pit_time_msec() >= timeout_at) {
-			dbg_printf(DBG_YLW"ps2_send_data: timed out\n"DBG_RST);
+			dbg_puts(DBG_YLW"ps2_send_data: timed out\n"DBG_RST);
 			return -1;
 		}
 	}
@@ -36,7 +36,7 @@ i16 ps2_recv(void) {
 	u32 timeout_at = pit_time_msec() + PS2_TIMEOUT_MSEC;
 	while (!(inb(PS2_STATUS) & PS2_SR_OUT)) {
 		if (pit_time_msec() >= timeout_at) {
-			dbg_printf(DBG_YLW"ps2_recv: timed out\n"DBG_RST);
+			dbg_puts(DBG_YLW"ps2_recv: timed out\n"DBG_RST);
 			return -1;
 		}
 	}
@@ -54,16 +54,16 @@ i16 ps2_send_port(u8 port, u8 cmd) {
 
 void ps2_disable_port(u8 port) {
 	if (port && ps2_send_cmd(PS2_CMD_DISABLE_P2) < 0)
-		dbg_put_str(DBG_RED"Failed to disable PS/2 port 2\n"DBG_RST);
+		dbg_puts(DBG_RED"Failed to disable PS/2 port 2\n"DBG_RST);
 	else if (ps2_send_cmd(PS2_CMD_DISABLE_P1) < 0)
-		dbg_put_str(DBG_RED"Failed to disable PS/2 port 1\n"DBG_RST);
+		dbg_puts(DBG_RED"Failed to disable PS/2 port 1\n"DBG_RST);
 }
 
 void ps2_enable_port(u8 port) {
 	if (port && ps2_send_cmd(PS2_CMD_ENABLE_P2) < 0)
-		dbg_put_str(DBG_RED"Failed to enable PS/2 port 2\n"DBG_RST);
+		dbg_puts(DBG_RED"Failed to enable PS/2 port 2\n"DBG_RST);
 	else if (ps2_send_cmd(PS2_CMD_ENABLE_P1) < 0)
-		dbg_put_str(DBG_RED"Failed to enable PS/2 port 1\n"DBG_RST);
+		dbg_puts(DBG_RED"Failed to enable PS/2 port 1\n"DBG_RST);
 }
 
 char* ps2_dev_str(u16 type) {
@@ -99,7 +99,7 @@ u16 ps2_identify(u8 dev) {
 }
 
 void ps2_initialize(void) {
-	dbg_put_str("\nInitializing PS/2 controller...\n");
+	dbg_puts("\nInitializing PS/2 controller...\n");
 
 	u8 dual_channel = 1;
 	ps2_p1 = PS2_DEV_NONE;
@@ -124,18 +124,18 @@ void ps2_initialize(void) {
 	// Perform self test
 	ps2_send_cmd(PS2_CMD_TEST_CTRL);
 	if (ps2_recv() != 0x55) {
-		dbg_put_str(DBG_RED"Self test of PS/2 controller failed\n"DBG_RST);
+		dbg_puts(DBG_RED"Self test of PS/2 controller failed\n"DBG_RST);
 		return;
 	}
 
 	// Perform interface tests
 	ps2_send_cmd(PS2_CMD_TEST_P1);
 	if (ps2_recv() != 0x00)
-		dbg_put_str(DBG_RED"Interface test of PS/2 port 1 failed\n"DBG_RST);
+		dbg_puts(DBG_RED"Interface test of PS/2 port 1 failed\n"DBG_RST);
 	if (dual_channel) {
 		ps2_send_cmd(PS2_CMD_TEST_P2);
 		if (ps2_recv() != 0x00) {
-			dbg_put_str(DBG_RED"Interface test of PS/2 port 2 failed\n"DBG_RST);
+			dbg_puts(DBG_RED"Interface test of PS/2 port 2 failed\n"DBG_RST);
 			dual_channel = 0;
 		}
 	}

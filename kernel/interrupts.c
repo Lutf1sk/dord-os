@@ -39,11 +39,11 @@ void irq_handler(i8 irq) {
 			break;
 
 		case IRQ_ATA1:
-			dbg_put_str("ATA1 interrupt received\n");
+			dbg_puts("ATA1 interrupt received\n");
 			break;
 
 		case IRQ_ATA2:
-			dbg_put_str("ATA2 interrupt received\n");
+			dbg_puts("ATA2 interrupt received\n");
 			break;
 
 		case IRQ_MOUSE:
@@ -60,11 +60,11 @@ void irq_handler(i8 irq) {
 	// Exception handlers
 	else if (is_exception(irq)) {
 		switch (irq) {
-		case EXCEPT_DIV_BY_0: dbg_put_str("Divide by 0 received\n"); break;
-		case EXCEPT_INVAL_OP: dbg_put_str("Invalid opcode received\n"); break;
-		case EXCEPT_INVAL_TSS: dbg_put_str("Invalid TSS received\n"); break;
-		case EXCEPT_GENERAL_PROTECTION_FAULT: dbg_put_str("General protection fault received\n"); break;
-		case EXCEPT_PAGE_FAULT: dbg_put_str("Page fault received\n"); break;
+		case EXCEPT_DIV_BY_0: dbg_puts("Divide by 0 received\n"); break;
+		case EXCEPT_INVAL_OP: dbg_puts("Invalid opcode received\n"); break;
+		case EXCEPT_INVAL_TSS: dbg_puts("Invalid TSS received\n"); break;
+		case EXCEPT_GENERAL_PROTECTION_FAULT: dbg_puts("General protection fault received\n"); break;
+		case EXCEPT_PAGE_FAULT: dbg_puts("Page fault received\n"); break;
 		default:
 			dbg_printf("Unknown exception %i received\n", irq);
 			break;

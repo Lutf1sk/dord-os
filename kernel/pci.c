@@ -24,7 +24,7 @@ void pci_read_registers(pci_dev_t* device) {
 }
 
 pci_dev_t* pci_enumerate(u32* out_count) {
-	dbg_put_str("\nEnumerating PCI devices...\n");
+	dbg_puts("\nEnumerating PCI devices...\n");
 	u32 dev_count = 0;
 
 	for (u16 bus = 0; bus < PCI_MAX_BUS; bus++) {

@@ -50,7 +50,7 @@ void pit_set_frequency(u8 channel, u32 hz) {
 }
 
 void pit_initialize(void) {
-	dbg_put_str("\nSetting PIT intervals...\n");
+	dbg_puts("\nSetting PIT intervals...\n");
 	dbg_printf(DBG_GRY"PIT0: %ihz\n"DBG_RST, 1000);
 	dbg_printf(DBG_GRY"PIT2: %ihz\n"DBG_RST, 1000);
 

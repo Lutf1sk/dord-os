@@ -1,7 +1,7 @@
 #ifndef DEBUG_IO_H
 #define DEBUG_IO_H
 
-#include "common.h"
+#include "io.h"
 
 #define DBG_RED "\x1b[31m"
 #define DBG_GRN "\x1b[32m"
@@ -12,9 +12,9 @@
 #define DBG_GRY "\x1b[37m"
 #define DBG_RST "\x1b[0m"
 
-void dbg_put_str(const char* str);
-void dbg_put_hex(u32 val);
-void dbg_put_i32(i32 val);
-void dbg_printf(const char* fmt, ...);
+usz dbg_write(void* usr, void* str, usz len);
+usz dbg_puts(char* str);
+
+usz dbg_printf(char* fmt, ...);
 
 #endif

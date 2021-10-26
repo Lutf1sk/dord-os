@@ -66,10 +66,10 @@ static acpi_rsdp_t* rsdp = 0;
 static acpi_rsdt_t* rsdt = 0;
 
 void acpi_initialize(void) {
-	dbg_put_str("\nInitializing ACPI...\n");
+	dbg_puts("\nInitializing ACPI...\n");
 	rsdp = acpi_find_rsdp();
 	if (!rsdp) {
-		dbg_put_str(DBG_YLW"No ACPI found\n"DBG_RST);
+		dbg_puts(DBG_YLW"No ACPI found\n"DBG_RST);
 		return;
 	}
 

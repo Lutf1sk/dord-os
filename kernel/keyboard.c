@@ -30,6 +30,6 @@ void kb_handle_interrupt(void) {
 }
 
 void kb_initialize(u8 port) {
-	dbg_put_str("\nInitializing keyboard...\n");
+	dbg_puts("\nInitializing keyboard...\n");
 }
 

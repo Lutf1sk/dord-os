@@ -14,12 +14,10 @@
 extern u32 terminal_pos;
 extern u16 terminal_color;
 
-void terminal_put_char(char c);
-void terminal_put_str(const char* str);
-void terminal_put_hex(u32 val);
-void terminal_put_i32(i32 val);
-
-void terminal_printf(const char* fmt, ...);
+void terminal_putc(char c);
+usz terminal_puts(char* str);
+usz terminal_write(void* usr, void* data, usz len);
+usz terminal_printf(char* fmt, ...);
 
 void terminal_clear(void);
 

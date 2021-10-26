@@ -2,8 +2,7 @@
 
 #include "memory.h"
 #include "asm.h"
-
-#include <stdarg.h>
+#include "io.h"
 
 #define TERMINAL_BUF ((u16*)0xB8000)
 
@@ -24,7 +23,7 @@ void terminal_update_cursor_pos() {
 	outb(0x3D5, (u8) ((terminal_pos >> 8) & 0xFF));
 }
 
-void terminal_put_char(char c) {
+void terminal_putc(char c) {
 	switch (c) {
 	case '\n': {
 		u32 line_begin_offs = terminal_pos % TERMINAL_WIDTH;
@@ -57,104 +56,25 @@ void terminal_put_char(char c) {
 	terminal_update_cursor_pos();
 }
 
-void terminal_put_str(const char* str) {
-	const char* it = str;
+usz terminal_puts(char* str) {
+	char* it = str;
 	while (*it)
-		terminal_put_char(*it++);
+		terminal_putc(*it++);
 }
 
-void terminal_put_hex(u32 val) {
-	char buf[32];
-	buf[31] = 0;
-
-	char* it = buf + 31;
-
-	u32 n = val;
-	while (n >= 16) {
-		--it;
-		u32 rem = n % 16;
-		n /= 16;
-		*it = rem > 9 ? 'A' + rem - 10 : '0' + rem;
-	}
-	--it;
-	u32 rem = n % 16;
-	*it = rem > 9 ? 'A' + rem - 10 : '0' + rem;
-
-	terminal_put_str(it);
+usz terminal_write(void* usr, void* data, usz len) {
+	char* it = data;
+	for (usz i = 0; i < len; ++i)
+		terminal_putc(*it++);
+	return len;
 }
 
-void terminal_put_i32(i32 val) {
-	char buf[32];
-	buf[31] = 0;
-
-	char* it = buf + 31;
-
-	i32 n = val;
-	while (n >= 10) {
-		--it;
-		i32 rem = n % 10;
-		n /= 10;
-		*it = '0' + rem;
-	}
-	--it;
-	i32 rem = n % 10;
-	*it = '0' + rem;
-
-	terminal_put_str(it);
-}
-
-void terminal_printf(const char* fmt, ...) {
-	va_list list;
-	va_start(list, fmt);
-
-	const char* it = fmt;
-
-	while (*it) {
-		if (*it != '%') {
-			terminal_put_char(*(it++));
-			continue;
-		}
-
-		++it;
-
-		switch (*(it++)) {
-		case 'i': {
-			i32 val = va_arg(list, i32);
-			terminal_put_i32(val);
-		}	break;
-
-		case 's': {
-			const char* val = va_arg(list, const char*);
-			terminal_put_str(val);
-		}	break;
-
-		case 'c': {
-			i32 val = va_arg(list, i32);
-			terminal_put_char(val);
-		}	break;
-
-		case 'v': {
-			u8 clr = va_arg(list, u32);
-			terminal_color = clr;
-		}	break;
-
-		case 'p': {
-			u32 val = va_arg(list, u32);
-			terminal_put_hex(val);
-		}	break;
-
-		case '%':
-			terminal_put_char('%');
-			break;
-
-		default:
-		break;
-
-		}
-
-	}
-
-	va_end(list);
+usz terminal_printf(char* fmt, ...) {
+	va_list argl;
+	va_start(argl, fmt);
+	usz bytes = io_vprintf(terminal_write, null, fmt, argl);
+	va_end(argl);
+	return bytes;
 }
 
 void terminal_clear(void) {

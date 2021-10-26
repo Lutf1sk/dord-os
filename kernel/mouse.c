@@ -56,20 +56,20 @@ static
 void mouse_set_rate(u8 port, u8 rate) {
 	ps2_send_port(port, MS_CMD_SET_SAMPLE_RATE);
 	if (ps2_recv() != PS2_ACK)
-		dbg_put_str(DBG_RED"Failed to set mouse sample rate\n"DBG_RST);
+		dbg_puts(DBG_RED"Failed to set mouse sample rate\n"DBG_RST);
 	ps2_send_port(port, rate);
 }
 
 void mouse_initialize(u8 port) {
-	dbg_put_str("\nInitializing mouse...\n");
+	dbg_puts("\nInitializing mouse...\n");
 
 	ps2_send_port(port, MS_CMD_SET_DEFAULTS);
 	if (ps2_recv() != PS2_ACK)
-		dbg_put_str(DBG_RED"Failed to set mouse defaults\n"DBG_RST);
+		dbg_puts(DBG_RED"Failed to set mouse defaults\n"DBG_RST);
 
 	ps2_send_port(port, MS_CMD_ENABLE_DREP);
 	if (ps2_recv() != PS2_ACK)
-		dbg_put_str(DBG_RED"Could not enable data reporting\n"DBG_RST);
+		dbg_puts(DBG_RED"Could not enable data reporting\n"DBG_RST);
 
 	// Z-Axis magic
 	mouse_set_rate(port, 200);
@@ -77,7 +77,7 @@ void mouse_initialize(u8 port) {
 	mouse_set_rate(port, 80);
 	ps2_send_port(port, MS_CMD_GET_DEVICE_ID);
 	if (ps2_recv() != PS2_ACK)
-		dbg_put_str(DBG_RED"Failed to get mouse device id\n"DBG_RST);
+		dbg_puts(DBG_RED"Failed to get mouse device id\n"DBG_RST);
 
 	if ((mouse_type = ps2_recv()) == 3) {
 		mouse_packet_size = 4;
@@ -88,7 +88,7 @@ void mouse_initialize(u8 port) {
 		mouse_set_rate(port, 80);
 		ps2_send_port(port, MS_CMD_GET_DEVICE_ID);
 		if (ps2_recv() != PS2_ACK)
-			dbg_put_str(DBG_RED"Failed to get mouse device id\n"DBG_RST);
+			dbg_puts(DBG_RED"Failed to get mouse device id\n"DBG_RST);
 
 		mouse_type = ps2_recv();
 	}
