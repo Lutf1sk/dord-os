@@ -70,7 +70,7 @@ void kernel_enter() {
 	// Write and load flat GDT
 	gdt_make_flat(gdt);
 	gdt_desc.size = sizeof(gdt);
-	gdt_desc.addr = (u32)gdt;
+	gdt_desc.addr = (usz)gdt;
 	lgdt(&gdt_desc);
 	reload_segments_asm();
 
@@ -85,7 +85,7 @@ void kernel_enter() {
 
 	// Remap PIC and unmask IRQs
 	pic_initialize();
-	for (int i = 0; i < 16; ++i)
+	for (usz i = 0; i < 16; ++i)
 		pic_unmask_irq(i);
 
 	sti(); // Enable interrupts
@@ -142,7 +142,7 @@ void kernel_enter() {
 
 	char dord[32768];
 
-	for (i32 i = 0; i < drive_count; ++i) {
+	for (usz i = 0; i < drive_count; ++i) {
 		dbg_printf("\n'%s' [%s %s %s] (%i sectors):\n", drives[i].name,
 				drive_type[drives[i].type], drive_channel[drives[i].channel], drive_bus[drives[i].bus], drives[i].size);
 
