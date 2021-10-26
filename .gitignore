@@ -1,0 +1,9 @@
+/**/*.o
+/**/*.d
+/**/*.bin
+/**/*.img
+
+IDE/dordos.files
+
+bin/
+

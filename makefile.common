@@ -1,0 +1,51 @@
+MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
+BASE_DIR := $(patsubst %/,%,$(dir $(MAKEFILE_PATH)))
+
+BIN_DIR = $(BASE_DIR)/bin/
+
+ifndef CXX
+CC = gcc
+endif
+
+ifndef ASM
+ASM = nasm
+endif
+
+ifndef LNK
+LNK = ld
+endif
+
+CC_FLAGS += -O2 -masm=intel
+ASM_FLAGS +=
+LNK_FLAGS +=
+
+DEPS = $(patsubst %.o,%.d,$(OBJECTS))
+
+-include $(DEPS)
+
+ifdef OUT
+all: $(BIN_DIR)/$(OUT)
+
+$(BIN_DIR)/$(OUT): $(OBJECTS)
+	$(LNK) -o "$(BIN_DIR)/$(OUT)" $(OBJECTS) $(LNK_FLAGS) $(LNK_LIBS)
+endif
+ifdef LIB
+all: $(BIN_DIR)/$(LIB)
+
+$(BIN_DIR)/$(LIB): $(OBJECTS)
+	ar rcs $(BIN_DIR)/$(LIB) $(LIB_FLAGS) $(OBJECTS)
+endif
+
+%.o: %.c
+	@echo Compiling $<...
+	@$(CC) $(CC_FLAGS) -MM -MT $@ -MF $(patsubst %.o,%.d,$@) $<
+	@$(CC) $(CC_FLAGS) -o $@ -c $<
+
+%.o: %.asm
+	@echo Compiling $<...
+	@$(ASM) $(ASM_FLAGS) -M -MT $@ -MF $(patsubst %.o,%.d,$@) $<
+	@$(ASM) $(ASM_FLAGS) -o $@ $<
+
+.PHONY: clean all
+clean:
+	-rm "$(BIN_DIR)/$(OUT)" $(OBJECTS) $(DEPS)
