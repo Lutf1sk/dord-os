@@ -18,6 +18,7 @@
 #include "vga.h"
 #include "mouse.h"
 #include "keyboard.h"
+#include "acpi.h"
 
 NORETURN
 void panic(const char* str) {
@@ -78,6 +79,9 @@ void kernel_enter() {
 	idt_desc.size = sizeof(idt);
 	idt_desc.addr = (u32)idt;
 	lidt(&idt_desc);
+
+	// Initialize ACPI
+	acpi_initialize();
 
 	// Remap PIC and unmask IRQs
 	pic_initialize();

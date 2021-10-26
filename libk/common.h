@@ -19,4 +19,7 @@ typedef int8_t i8;
 
 #define PACKED __attribute__((packed))
 
+#define KB(x) (x * 1024L)
+#define MB(x) (KB(x) * 1024L)
+
 #endif
