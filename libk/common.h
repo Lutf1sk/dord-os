@@ -24,4 +24,6 @@ typedef size_t usz;
 #define KB(x) (x * 1024L)
 #define MB(x) (KB(x) * 1024L)
 
+#define null ((void*)0)
+
 #endif
