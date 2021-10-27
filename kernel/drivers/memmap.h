@@ -24,10 +24,10 @@ struct PACKED memmap {
 static INLINE
 const char* memmap_type_str(u32 type) {
 	switch (type) {
-	case MEMMAP_INVAL: return "INVALID";
-	case MEMMAP_USABLE: return "USABLE";
-	case MEMMAP_RESERVED: return "RESERVED";
-	default: return "UNKNOWN";
+	case MEMMAP_INVAL:		return "INVALID ";
+	case MEMMAP_USABLE:		return "USABLE  ";
+	case MEMMAP_RESERVED:	return "RESERVED";
+	default:				return "UNKNOWN ";
 	}
 }
 

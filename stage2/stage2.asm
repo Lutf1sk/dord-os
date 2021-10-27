@@ -3,7 +3,6 @@
 extern build_memory_map
 extern enable_a20
 extern read_sectors
-extern memmap_entries
 extern memmap
 extern panic
 
@@ -147,21 +146,30 @@ protected_mode:
 
 	call stage2_c
 
-	mov ecx, memmap
-	mov bx, [memmap_entries]
-	mov dl, [boot_drive]
-	mov edi, mib
+	; Jump to the kernel entry point returned by stage2_c
+	mov esi, boot_info
 	jmp eax
 
 SECTION .data
-	kernel_path: db "kernel.bin", 0
-	kernel_header_addr: dd 0
-	boot_drive: db 0
+kernel_path: db "kernel.bin", 0
+kernel_header_addr: dd 0
+
+global klow
+global khigh
+global memmap_entries;
+
+boot_info:
+	klow:				dd 0
+	khigh:				dd 0
+	memmap_addr:		dd memmap
+	mib_addr:			dd mib
+	memmap_entries:		dw 0
+	boot_drive:			db 0
 
 SECTION .bss
-	stack: resb 1024
+stack: resb 1024
 	.top:
 
-	mib: resb 256
-	vbeib: resb 256
+mib: resb 256
+vbeib: resb 256
 

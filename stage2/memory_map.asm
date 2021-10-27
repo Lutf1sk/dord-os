@@ -1,6 +1,7 @@
 [BITS 16]
 
 extern panic
+extern memmap_entries
 
 SECTION .text
 
@@ -58,5 +59,3 @@ SECTION .data
 global memmap
 memmap: times (32 * 3) dq 0
 
-global memmap_entries
-memmap_entries: dw 0

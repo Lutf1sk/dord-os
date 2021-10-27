@@ -57,6 +57,8 @@ void enumerate_and_initialize(void) {
 	panic_c("No usable IDE Controller found");
 }
 
+extern u32 klow, khigh;
+
 void* load_elf_kernel(u8* kernel_elf_data) {
 	elf32_fh_t* fh = (elf32_fh_t*)kernel_elf_data;
 
@@ -68,22 +70,34 @@ void* load_elf_kernel(u8* kernel_elf_data) {
 
 	char* strtab = (char*)&kernel_elf_data[sh[fh->sh_strtab_index].offset];
 
+	klow = UINT32_MAX;
+	khigh = 0;
+
 	for (u32 i = 0; i < fh->sh_count; ++i) {
-		void* addr = (void*)sh[i].addr;
+		u32 addr = sh[i].addr;
 		u32 size = sh[i].size;
 		void* data = &kernel_elf_data[sh[i].offset];
 		char* name = &strtab[sh[i].name_stab_offs];
 
 		if (sh[i].type == ELF_SH_TYPE_PROGBITS && addr) {
+			if (addr < klow)
+				klow = addr;
+			if (addr + size > khigh)
+				khigh = addr + size;
 			dbg_printf(DBG_GRY"Loading section '%s'\n"DBG_RST, name);
-			mcpy8(addr, data, size);
+			mcpy8((void*)addr, data, size);
 		}
 		else if (sh[i].type == ELF_SH_TYPE_NOBITS) {
+			if (addr < klow)
+				klow = addr;
+			if (addr + size > khigh)
+				khigh = addr + size;
 			dbg_printf(DBG_GRY"Zeroing section '%s'\n"DBG_RST, name);
-			mset8(addr, 0, size);
+			mset8((void*)addr, 0, size);
 		}
 	}
 
+	dbg_printf("Loaded kernel at 0x%hd -> 0x%hd (%ud bytes)\n", klow, khigh, khigh - klow);
 	dbg_printf("Jumping to kernel entry point 0x%hz\n", fh->entry);
 	return (void*)fh->entry;
 }

@@ -45,21 +45,37 @@ extern void reload_segments_asm(void);
 // with information provided to it by the bootloader
 typedef
 struct PACKED bootinf {
-	void* stack;
+	void* kernel_start;
+	void* kernel_end;
 	memmap_t* memmap;
 	vbe_mib_t* mib;
 	u16 memmap_entry_count;
 	u8 boot_drive;
 } bootinf_t;
 
-extern bootinf_t boot_info;
+extern bootinf_t* boot_info_ptr;
+
+bootinf_t boot_info;
+vbe_mib_t mib;
+memmap_t* memmap;
 
 void kernel_enter() {
 	dbg_puts(DBG_CYN"\nENTERED KERNEL\n"DBG_RST);
 	dbg_printf("CPU: '%s' %s\n", cpu_vendor_str(), cpu_brand_str());
 
-	// Initialize physical memory manager
+	// Copy the important structures from the stage2 memory
+	boot_info = *boot_info_ptr;
+	mib = *boot_info.mib;
+
+	// Initialize physical memory manager and mark reserved areas
 	pmman_initialize(boot_info.memmap, boot_info.memmap_entry_count);
+
+	pmman_map_t* pmkmap = &pmman_kernel_map;
+	usz kernel_len = boot_info.kernel_end - boot_info.kernel_start;
+	pmman_mark_range(pmkmap, pmman_to_block(pmkmap, boot_info.kernel_start), pmman_to_blocks(pmkmap, kernel_len)); // Mark kernel
+	pmman_mark_range(pmkmap, 0, pmman_to_blocks(pmkmap, 0x7C00)); // Mark low BIOS
+	// Mark the BIOS memory map to keep it from being overwritten
+	pmman_mark_range(pmkmap, pmman_to_block(pmkmap, boot_info.memmap), pmman_to_blocks(pmkmap, sizeof(memmap_t) * boot_info.memmap_entry_count));
 
 	// Write and load flat GDT
 	gdt_make_flat(gdt);
@@ -134,7 +150,7 @@ void kernel_enter() {
 	static char* drive_bus[2] = { "Master", "Slave" };
 	static char* drive_channel[2] = { "Primary", "Secondary" };
 
-	char dord[32768];
+	static char dord[4096 + 512];
 
 	for (usz i = 0; i < drive_count; ++i) {
 		dbg_printf("\n'%s' [%s %s %s] (%ud sectors):\n", drives[i].name,
@@ -148,8 +164,10 @@ void kernel_enter() {
 			dbg_printf(DBG_GRY"File: '%s' (%ud Bytes)\n"DBG_RST, it.name, it.sectors * 512);
 
 			if (strneq(it.name, "dord.bmp", 32)) {
-				char buf[8192];
-				dfs_read(buf, &it);
+				dfs_read(dord, &it);
+				break;
+
+				char buf[1];
 
 				if (buf[0] != 'B' || buf[1] != 'M')
 					dbg_puts("Invalid bmp magic, expected 'BM'\n");
@@ -185,6 +203,8 @@ void kernel_enter() {
 		}
 	}
 
+	pmman_print_map(&pmman_kernel_map);
+
 	dbg_puts("\n--- DordOS started successfully! ---\n");
 
 	vbe_mib_t* mib = boot_info.mib;
@@ -198,7 +218,7 @@ void kernel_enter() {
 		if (time % 17 == 0 && last_time != time) {
 			last_time = time;
 			vga_clear(0x000000);
-			vga_put_image(dord, mouse_x, mouse_y, 64, 64);
+			vga_put_image(dord, mouse_x, mouse_y, 32, 32);
 		}
 		hlt();
 	}
