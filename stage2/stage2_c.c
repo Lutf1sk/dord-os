@@ -84,7 +84,7 @@ void* load_elf_kernel(u8* kernel_elf_data) {
 		}
 	}
 
-	dbg_printf("Jumping to kernel entry point 0x%p\n", fh->entry);
+	dbg_printf("Jumping to kernel entry point 0x%hz\n", fh->entry);
 	return (void*)fh->entry;
 }
 
@@ -101,7 +101,7 @@ void* stage2_c(void) {
 	enumerate_and_initialize();
 
 	for (i32 i = 0; i < drive_count; ++i) {
-		dbg_printf("Checking drive %i:\n", i);
+		dbg_printf("Checking drive %ud:\n", i);
 
 		char buf[512];
 		dfs_file_header_t* header = (dfs_file_header_t*)buf;
@@ -111,7 +111,7 @@ void* stage2_c(void) {
 			ide_read_drive(&drives[i], buf, lba, 1);
 
 			if (strneq(header->name, "kernel.bin", 32)) {
-				dbg_printf(DBG_GRN"Found kernel image '%s' on drive %i\n"DBG_RST, header->name, i);
+				dbg_printf(DBG_GRN"Found kernel image '%s' on drive %ud\n"DBG_RST, header->name, i);
 
 				ide_read_drive(&drives[i], TMP_ELF_ADDR, lba + 1, header->sectors);
 				return load_elf_kernel(TMP_ELF_ADDR);

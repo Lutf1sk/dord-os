@@ -26,8 +26,8 @@ void pit_set_frequency(u8 channel, u32 hz) {
 
 void pit_initialize(void) {
 	dbg_puts("\nSetting PIT intervals...\n");
-	dbg_printf(DBG_GRY"PIT0: %ihz\n"DBG_RST, 1000);
-	dbg_printf(DBG_GRY"PIT2: %ihz\n"DBG_RST, 1000);
+	dbg_printf(DBG_GRY"PIT0: %udhz\n"DBG_RST, 1000);
+	dbg_printf(DBG_GRY"PIT2: %udhz\n"DBG_RST, 1000);
 
 	pit_set_frequency(0, 1000);
 	//pit_set_frequency(1, 1000); // This channel is unnecessary on modern PCs

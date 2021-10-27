@@ -17,6 +17,7 @@ struct acpi_sdt_header {
 	u32 creator_rev;
 } acpi_sdt_header_t;
 
+
 // Root System Descriptor Pointer
 typedef
 struct acpi_rdsp {
@@ -73,6 +74,7 @@ struct PACKED acpi_gas {
 	u8 access_size;
 	u64 access;
 } acpi_gas_t;
+
 
 // Fixed ACPI Description Table
 typedef

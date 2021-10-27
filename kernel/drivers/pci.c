@@ -41,7 +41,7 @@ pci_dev_t* pci_enumerate(u32* out_count) {
 
 					pci_read_registers(dev);
 
-					dbg_printf(DBG_GRY"%i:%i:%i '%s'\n"DBG_RST, bus, device, func, dev->class_str);
+					dbg_printf(DBG_GRY"%ud:%ud:%ud '%s'\n"DBG_RST, bus, device, func, dev->class_str);
 				}
 			}
 		}

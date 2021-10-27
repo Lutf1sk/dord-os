@@ -145,7 +145,7 @@ void ps2_initialize(void) {
 	ps2_send_port(PS2_PORT1, PS2_DCMD_RESET);
 	if (ps2_recv() == PS2_ACK && ps2_recv() == 0xAA) {
 		ps2_p1 = ps2_identify(PS2_PORT1);
-		dbg_printf(DBG_GRY"Port 1: Found '%s' (0x%p)\n"DBG_RST, ps2_dev_str(ps2_p1), ps2_p1);
+		dbg_printf(DBG_GRY"Port 1: Found '%s' (0x%hd)\n"DBG_RST, ps2_dev_str(ps2_p1), ps2_p1);
 	}
 
 	if (dual_channel) {
@@ -153,7 +153,7 @@ void ps2_initialize(void) {
 		ps2_send_port(PS2_PORT2, PS2_DCMD_RESET);
 		if (ps2_recv() == PS2_ACK && ps2_recv() == 0xAA) {
 			ps2_p2 = ps2_identify(PS2_PORT2);
-			dbg_printf(DBG_GRY"Port 2: Found '%s' (0x%p)\n"DBG_RST, ps2_dev_str(ps2_p2), ps2_p2);
+			dbg_printf(DBG_GRY"Port 2: Found '%s' (0x%hd)\n"DBG_RST, ps2_dev_str(ps2_p2), ps2_p2);
 		}
 	}
 }

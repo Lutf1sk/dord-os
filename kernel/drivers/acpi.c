@@ -28,7 +28,7 @@ u8 acpi_rsdp_validate(acpi_rsdp_t* rsdp) {
 static
 acpi_rsdp_t* acpi_find_rsdp(void) {
 	// Read the 16-bit EBDA pointer from 0x040E
-	u8* ebda = (u8*)(u32)*(u16*)0x040E;
+	u8* ebda = (u8*)(usz)*(u16*)0x040E;
 
 	// The RSDP is sometimes located in the 1st KiB of the EBDA
 	for (u32 i = 0; i < KB(1); i += 16) {
@@ -78,7 +78,7 @@ void acpi_initialize(void) {
 
 	// TODO: Use XSDT whenever it's available
 	rsdt = (acpi_rsdt_t*)rsdp->rsdt_addr;
-	dbg_printf(DBG_GRY"RSDP: 0x%p, RSDT: 0x%p\n"DBG_RST, rsdp, rsdt);
+	dbg_printf(DBG_GRY"RSDP: 0x%hz, RSDT: 0x%hz\n"DBG_RST, rsdp, rsdt);
 
 	u32 sdt_addr_count = (rsdt->header.len - sizeof(acpi_rsdt_t)) / sizeof(u32);
 
@@ -90,7 +90,7 @@ void acpi_initialize(void) {
 		mcpy8(signature, header->signature, 4);
 		signature[4] = 0;
 
-		dbg_printf(DBG_GRY"%s: 0x%p\n"DBG_RST, signature, header);
+		dbg_printf(DBG_GRY"%s: 0x%hz\n"DBG_RST, signature, header);
 		if (!acpi_validate_sdt(header)) {
 			dbg_printf(DBG_YLW"Table '%s' failed to validate\n"DBG_RST, signature);
 			continue;
@@ -118,7 +118,7 @@ void acpi_initialize(void) {
 				}
 			}
 			u32 cpu_count = active_cpu_count + inactive_cpu_count;
-			dbg_printf(DBG_GRY"CPUs: %i/%i\nLAPIC: 0x%p, IOAPIC: 0x%p\n"DBG_RST, active_cpu_count, cpu_count, lapic, ioapic);
+			dbg_printf(DBG_GRY"CPUs: %id/%id\nLAPIC: 0x%hz, IOAPIC: 0x%hz\n"DBG_RST, active_cpu_count, cpu_count, lapic, ioapic);
 		}
 		else if (strneq(signature, "FACP", 4)) {
 			fadt = (acpi_fadt_t*)header;

@@ -10,8 +10,8 @@ u32 vga_pixel_count = 0;
 
 void vga_initialize(void* vram, u32 res_x, u32 res_y) {
 	dbg_printf("\nInitializing VGA...\n");
-	dbg_printf(DBG_GRY"VRAM Address: 0x%p\n"DBG_RST, vram);
-	dbg_printf(DBG_GRY"Resolution: %ix%i\n"DBG_RST, res_x, res_y);
+	dbg_printf(DBG_GRY"VRAM Address: 0x%hz\n"DBG_RST, vram);
+	dbg_printf(DBG_GRY"Resolution: %idx%id\n"DBG_RST, res_x, res_y);
 	vga_vram = vram;
 	vga_res_x = res_x;
 	vga_res_y = res_y;

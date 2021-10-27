@@ -63,12 +63,7 @@ usz io_vprintf(io_callback_t callb, void* usr, char* fmt, va_list argl) {
 
 		++it; // Consume '%'
 
-		switch (*(it++)) {
-		case 'i': {
-			i32 val = va_arg(argl, i32);
-			io_printiq(callb, usr, val);
-		}	break;
-
+		switch (*it++) {
 		case 's': {
 			char* val = va_arg(argl, char*);
 			callb(usr, val, strlen(val));
@@ -79,17 +74,45 @@ usz io_vprintf(io_callback_t callb, void* usr, char* fmt, va_list argl) {
 			callb(usr, &val, 1);
 		}	break;
 
-
-		case 'p': {
-			u32 val = va_arg(argl, u32);
-			io_printhq(callb, usr, val);
-		}	break;
-
 		case '%':
 			callb(usr, it - 1, 1);
 			break;
 
-		default:
+		case 'i': {
+			i64 val;
+			switch (*it++) {
+			case 'q': val = va_arg(argl, i64); break;
+			case 'd': val = va_arg(argl, i32); break;
+			case 'z': val = va_arg(argl, usz); break;
+			default: goto inval;
+			}
+			io_printiq(callb, usr, val);
+		}	break;
+
+		case 'u': {
+			i64 val;
+			switch (*it++) {
+			case 'q': val = va_arg(argl, i64); break;
+			case 'd': val = va_arg(argl, i32); break;
+			case 'z': val = va_arg(argl, usz); break;
+			default: goto inval;
+			}
+			io_printuq(callb, usr, val);
+		}	break;
+
+		case 'h': {
+			i64 val;
+			switch (*it++) {
+			case 'q': val = va_arg(argl, i64); break;
+			case 'd': val = va_arg(argl, i32); break;
+			case 'z': val = va_arg(argl, usz); break;
+			default: goto inval;
+			}
+			io_printhq(callb, usr, val);
+		}	break;
+
+		default: inval:
+			callb(usr, start, it - start);
 			break;
 		}
 

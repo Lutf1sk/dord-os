@@ -52,7 +52,7 @@ void irq_handler(i8 irq) {
 			break;
 
 		default:
-			dbg_printf("Unknown interrupt %i received\n", irq);
+			dbg_printf("Unknown interrupt %ud received\n", irq);
 			break;
 		}
 
@@ -67,7 +67,7 @@ void irq_handler(i8 irq) {
 		case EXCEPT_GENERAL_PROTECTION_FAULT: dbg_puts("General protection fault received\n"); break;
 		case EXCEPT_PAGE_FAULT: dbg_puts("Page fault received\n"); break;
 		default:
-			dbg_printf("Unknown exception %i received\n", irq);
+			dbg_printf("Unknown exception %ud received\n", irq);
 			break;
 		}
 		hang();

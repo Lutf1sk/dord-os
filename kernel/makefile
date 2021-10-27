@@ -4,6 +4,7 @@ OUT = kernel.bin
 OBJECTS = \
 	debug_io.o \
 	kernel.o \
+	pmman.o \
 	x86/entry.o \
 	x86/gdt.o \
 	x86/idt.o \
