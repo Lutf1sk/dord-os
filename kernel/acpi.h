@@ -45,6 +45,25 @@ struct acpi_rsdt {
 	u32 sdt_addr_table[];
 } acpi_rsdt_t;
 
+
+// Multiple APIC Description Table
+#define ACPI_MADT_CPU_LAPIC			0x00
+#define ACPI_MADT_IO_APIC			0x01
+#define ACPI_MADT_INTR_SRC_OVERR	0x02
+#define ACPI_MADT_NMI_SRC			0x03
+#define ACPI_MADT_LAPIC_NMI			0x04
+#define ACPI_MADT_LAPIC_ADDR_OVERR	0x05
+#define ACPI_MADT_LAPIC_X2			0x09
+
+typedef
+struct acpi_madt {
+	acpi_sdt_header_t header;
+	u32 lapic_addr;
+	u32 flags;
+	u8 intr_devs[];
+} acpi_madt_t;
+
+
 void acpi_initialize(void);
 
 #endif

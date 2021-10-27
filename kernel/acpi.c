@@ -74,7 +74,7 @@ void acpi_initialize(void) {
 	}
 
 	rsdt = (acpi_rsdt_t*)rsdp->rsdt_addr;
-	dbg_printf(DBG_GRY"RSDP: 0x%p\nRSDT: 0x%p\n"DBG_RST, rsdp, rsdt);
+	dbg_printf(DBG_GRY"RSDP: 0x%p, RSDT: 0x%p\n"DBG_RST, rsdp, rsdt);
 
 	u32 sdt_addr_count = (rsdt->header.len - sizeof(acpi_rsdt_t)) / sizeof(u32);
 
@@ -87,8 +87,35 @@ void acpi_initialize(void) {
 		signature[4] = 0;
 
 		dbg_printf(DBG_GRY"%s: 0x%p\n"DBG_RST, signature, header);
-		if (!acpi_validate_sdt(header))
+		if (!acpi_validate_sdt(header)) {
 			dbg_printf(DBG_YLW"Table '%s' failed to validate\n"DBG_RST, signature);
+			continue;
+		}
+
+		if (strneq(signature, "APIC", 4)) {
+			acpi_madt_t* madt = (acpi_madt_t*)header;
+
+			u32 active_cpu_count = 0, inactive_cpu_count = 0;
+			void* lapic = (void*)madt->lapic_addr, *ioapic = null;
+			u8* it = madt->intr_devs, *end = it + header->len - sizeof(acpi_madt_t);
+
+			// Iterate over PIC records, adding the 'length' entry after each one
+			for (; it < end; it += it[1]) {
+				switch (it[0]) {
+				case 0: {
+					u32 flags = *((u32*)&it[4]);
+					if (flags & 1) // CPU Enabled bit
+						++active_cpu_count;
+					else if (flags & 2) // Online Capable bit
+						++inactive_cpu_count;
+				}	break;
+				case 1: ioapic = (void*) *((u32*)&it[4]); break;
+				case 5: lapic = (void*) *((u32*)&it[4]); break;
+				}
+			}
+			u32 cpu_count = active_cpu_count + inactive_cpu_count;
+			dbg_printf(DBG_GRY"CPUs: %i/%i\nLAPIC: 0x%p, IOAPIC: 0x%p\n"DBG_RST, active_cpu_count, cpu_count, lapic, ioapic);
+		}
 	}
 }
 
