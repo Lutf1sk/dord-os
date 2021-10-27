@@ -1,24 +1,23 @@
-#include "memory.h"
-#include "debug_io.h"
-#include "asm.h"
-#include "memmap.h"
-#include "dfs.h"
+#include <memory.h>
+#include <debug_io.h>
+#include <asm.h>
 
-// Drivers
-#include "cpuid.h"
-#include "idt.h"
-#include "pic.h"
-#include "gdt.h"
-#include "pci.h"
-#include "ide.h"
-#include "pit.h"
-#include "pc_speaker.h"
-#include "ps2.h"
-#include "vbe.h"
-#include "vga.h"
-#include "mouse.h"
-#include "keyboard.h"
-#include "acpi.h"
+#include <x86/cpuid.h>
+#include <x86/idt.h>
+#include <x86/gdt.h>
+
+#include <drivers/memmap.h>
+#include <drivers/dfs.h>
+#include <drivers/pic.h>
+#include <drivers/pci.h>
+#include <drivers/ide.h>
+#include <drivers/pit.h>
+#include <drivers/ps2.h>
+#include <drivers/vbe.h>
+#include <drivers/vga.h>
+#include <drivers/mouse.h>
+#include <drivers/keyboard.h>
+#include <drivers/acpi.h>
 
 NORETURN
 void panic(const char* str) {

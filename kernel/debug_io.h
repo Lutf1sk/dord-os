@@ -1,7 +1,7 @@
 #ifndef DEBUG_IO_H
 #define DEBUG_IO_H
 
-#include "io.h"
+#include <common.h>
 
 #define DBG_RED "\x1b[31m"
 #define DBG_GRN "\x1b[32m"

@@ -1,6 +1,7 @@
-#include "debug_io.h"
+#include <debug_io.h>
+#include <io.h>
 
-#include "com.h"
+#include <drivers/com.h>
 
 usz dbg_write(void* usr, void* str, usz len) {
 	u8* it = str;
