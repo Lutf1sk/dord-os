@@ -10,7 +10,7 @@ usz io_printuq(io_callback_t callb, void* usr, u64 n) {
 		*it-- = n % 10 + '0';
 		n /= 10;
 	}
-	*it-- = n + '0';
+	*it = n + '0';
 
 	usz len = end - it;
 	return callb(usr, it, len + 1);
@@ -42,7 +42,7 @@ usz io_printhq(io_callback_t callb, void* usr, u64 n) {
 		*it-- = io_hex_char[n & 0x0F];
 		n >>= 4;
 	}
-	*it-- = io_hex_char[n];
+	*it = io_hex_char[n];
 
 	usz len = end - it;
 	return callb(usr, it, len + 1);
