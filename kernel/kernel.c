@@ -150,7 +150,8 @@ void kernel_enter() {
 	static char* drive_bus[2] = { "Master", "Slave" };
 	static char* drive_channel[2] = { "Primary", "Secondary" };
 
-	static char dord[4096 + 512];
+	u32* dord;
+	usz dord_w, dord_h;
 
 	for (usz i = 0; i < drive_count; ++i) {
 		dbg_printf("\n'%s' [%s %s %s] (%ud sectors):\n", drives[i].name,
@@ -164,52 +165,42 @@ void kernel_enter() {
 			dbg_printf(DBG_GRY"File: '%s' (%ud Bytes)\n"DBG_RST, it.name, it.sectors * 512);
 
 			if (strneq(it.name, "dord.bmp", 32)) {
-				dfs_read(dord, &it);
-				break;
+				static u8 dord_file[4096 + 512];
+				dfs_read(dord_file, &it);
 
-				char buf[1];
-
-				if (buf[0] != 'B' || buf[1] != 'M')
+				if (dord_file[0] != 'B' || dord_file[1] != 'M')
 					dbg_puts("Invalid bmp magic, expected 'BM'\n");
 
-				// Read relevant offsets of the BMP header
-				u32 datapos = *(int*)&(buf[0x0A]);
-				u32 size	= *(int*)&(buf[0x22]);
-				u32 width	= *(int*)&(buf[0x12]);
-				u32 height	= *(int*)&(buf[0x16]);
+				u32 datapos = *(int*)&(dord_file[0x0A]);
+				u32 size = *(int*)&(dord_file[0x22]);
+				dord_w = *(int*)&(dord_file[0x12]);
+				dord_h = *(int*)&(dord_file[0x16]);
 
-				u32* img_it = (u32*)&buf[datapos + (width * (height - 1) * 4)];
-				u32* upsc_it = (u32*)dord;
+				dord = pmman_alloc(pmkmap, size);
 
-				u32 scaled_w = width * 2, scaled_h = height * 2;
-
-				// Upscale image to 64x64 (from 32x32), iterating over the image
-				// data bottom-to-top, since .BMP files are stored upside-down
-				for (u32 i = 0; i < height; ++i) {
-					for (u32 i = 0; i < width; ++i) {
-						*(upsc_it++) = *img_it;
-						*(upsc_it++) = *img_it;
-						++img_it;
-					}
-					img_it -= width;
-					for (u32 i = 0; i < width; ++i) {
-						*(upsc_it++) = *img_it;
-						*(upsc_it++) = *img_it;
-						++img_it;
-					}
-					img_it -= scaled_w;
+				u32* dord_it = dord;
+				u32* file_it = (u32*)&dord_file[datapos] + (dord_h - 1) * dord_w;
+				for (i32 i = dord_h - 1; i >= 0; --i) {
+					mcpy8(dord_it, file_it, dord_w * sizeof(u32));
+					dord_it += dord_w;
+					file_it -= dord_w;
 				}
 			}
 		}
 	}
-
-	pmman_print_map(&pmman_kernel_map);
 
 	dbg_puts("\n--- DordOS started successfully! ---\n");
 
 	vbe_mib_t* mib = boot_info.mib;
 
 	u32 last_time = pit_time_msec();
+
+	// Create a second vram-sized area for double buffering
+	usz vram_size = vga_pixel_count * sizeof(u32);
+	void* vram = vga_vram;
+	vga_vram = pmman_alloc(pmkmap, vram_size);
+
+	pmman_print_map(&pmman_kernel_map);
 
 	extern i32 mouse_x, mouse_y;
 	while (1) {
@@ -219,6 +210,7 @@ void kernel_enter() {
 			last_time = time;
 			vga_clear(0x000000);
 			vga_put_image(dord, mouse_x, mouse_y, 32, 32);
+			mcpy32(vram, vga_vram, vram_size);
 		}
 		hlt();
 	}

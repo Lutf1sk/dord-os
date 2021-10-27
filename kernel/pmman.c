@@ -62,7 +62,7 @@ found:
 }
 
 void* pmman_free(pmman_map_t* map, void* addr, usz size) {
-
+	pmman_clear_range(map, pmman_to_block(map, addr), pmman_to_blocks(map, size));
 }
 
 
