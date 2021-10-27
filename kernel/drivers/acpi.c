@@ -63,8 +63,10 @@ u8 acpi_validate_sdt(acpi_sdt_header_t* sdt) {
 	return checksum == 0;
 }
 
-static acpi_rsdp_t* rsdp = 0;
-static acpi_rsdt_t* rsdt = 0;
+static acpi_rsdp_t* rsdp = null;
+static acpi_rsdt_t* rsdt = null;
+static acpi_fadt_t* fadt = null;
+static acpi_madt_t* madt = null;
 
 void acpi_initialize(void) {
 	dbg_puts("\nInitializing ACPI...\n");
@@ -95,7 +97,7 @@ void acpi_initialize(void) {
 		}
 
 		if (strneq(signature, "APIC", 4)) {
-			acpi_madt_t* madt = (acpi_madt_t*)header;
+			madt = (acpi_madt_t*)header;
 
 			u32 active_cpu_count = 0, inactive_cpu_count = 0;
 			void* lapic = (void*)madt->lapic_addr, *ioapic = null;
@@ -118,9 +120,19 @@ void acpi_initialize(void) {
 			u32 cpu_count = active_cpu_count + inactive_cpu_count;
 			dbg_printf(DBG_GRY"CPUs: %i/%i\nLAPIC: 0x%p, IOAPIC: 0x%p\n"DBG_RST, active_cpu_count, cpu_count, lapic, ioapic);
 		}
+		else if (strneq(signature, "FACP", 4)) {
+			fadt = (acpi_fadt_t*)header;
+		}
 	}
 }
 
+#include <asm.h>
 
+void acpi_enable(void) {
+	outb(fadt->smi_cmd_port, fadt->acpi_enable);
+}
 
+void acpi_disable(void) {
+	outb(fadt->smi_cmd_port, fadt->acpi_disable);
+}
 
