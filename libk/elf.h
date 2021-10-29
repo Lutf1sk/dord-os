@@ -133,13 +133,13 @@ struct PACKED elf64_ph {
 typedef
 struct PACKED elf32_ph {
 	u32 type;
-	u32 flags;
 	u32 offset;
 
 	u32 vaddr;
 	u32 paddr;
 	u32 file_size;
 	u32 mem_size;
+	u32 flags;
 	u32 alignment;
 } elf32_ph_t;
 
@@ -200,5 +200,25 @@ struct PACKED elf32_sh {
 	u32 addr_align;
 	u32 ent_size;
 } elf32_sh_t;
+
+typedef
+struct elf32_sym {
+	u32 name_stab_offs;
+	u32 value;
+	u32 size;
+	u8 info;
+	u8 other;
+	u16 section;
+} elf32_sym_t;
+
+typedef
+struct PACKED elf64_sym {
+	u32 name_stab_offs;
+	u8 info;
+	u8 other;
+	u16 section;
+	u64 value;
+	u64 size;
+} elf64_sym_t;
 
 #endif
