@@ -2,6 +2,7 @@
 #include <debug_io.h>
 #include <asm.h>
 #include <pmman.h>
+#include <elf.h>
 
 #include <x86/cpuid.h>
 #include <x86/idt.h>
@@ -30,11 +31,11 @@ void panic(const char* str) {
 	}
 }
 
-idt_t idt[256] = {};
-idt_desc_t idt_desc;
-
 gdt_t gdt[3];
 gdt_desc_t gdt_desc;
+
+idt_t idt[256] = {};
+idt_desc_t idt_desc;
 
 ide_drive_t* drives = 0;
 u32 drive_count = 0;
@@ -150,68 +151,45 @@ void kernel_enter() {
 	static char* drive_bus[2] = { "Master", "Slave" };
 	static char* drive_channel[2] = { "Primary", "Secondary" };
 
-	u32* dord;
-	usz dord_w, dord_h;
+	u8* example = null;
 
 	for (usz i = 0; i < drive_count; ++i) {
-		dbg_printf("\n'%s' [%s %s %s] (%ud sectors):\n", drives[i].name,
-				drive_type[drives[i].type], drive_channel[drives[i].channel], drive_bus[drives[i].bus], drives[i].size);
-
 		if (drives[i].type != IDE_ATA) // Only search ATA drives (for now)
 			continue;
+
+		dbg_printf("\n'%s' [%s %s %s] (%ud sectors):\n", drives[i].name,
+				drive_type[drives[i].type], drive_channel[drives[i].channel], drive_bus[drives[i].bus], drives[i].size);
 
 		dfs_it_t it = dfs_it_begin(&drives[i]);
 		while (dfs_iterate(&it)) {
 			dbg_printf(DBG_GRY"File: '%s' (%ud Bytes)\n"DBG_RST, it.name, it.sectors * 512);
-
-			if (strneq(it.name, "dord.bmp", 32)) {
-				static u8 dord_file[4096 + 512];
-				dfs_read(dord_file, &it);
-
-				if (dord_file[0] != 'B' || dord_file[1] != 'M')
-					dbg_puts("Invalid bmp magic, expected 'BM'\n");
-
-				u32 datapos = *(int*)&(dord_file[0x0A]);
-				u32 size = *(int*)&(dord_file[0x22]);
-				dord_w = *(int*)&(dord_file[0x12]);
-				dord_h = *(int*)&(dord_file[0x16]);
-
-				dord = pmman_alloc(pmkmap, size);
-
-				u32* dord_it = dord;
-				u32* file_it = (u32*)&dord_file[datapos] + (dord_h - 1) * dord_w;
-				for (i32 i = dord_h - 1; i >= 0; --i) {
-					mcpy8(dord_it, file_it, dord_w * sizeof(u32));
-					dord_it += dord_w;
-					file_it -= dord_w;
-				}
+			if (strneq(it.name, "example.bin", 32)) {
+				example = pmman_alloc(pmkmap, it.sectors * 512);
+				dfs_read(example, &it);
 			}
 		}
 	}
 
-	dbg_puts("\n--- DordOS started successfully! ---\n");
+	elf32_fh_t* fh = (elf32_fh_t*)example;
 
-	vbe_mib_t* mib = boot_info.mib;
+	elf32_ph_t* phs = (elf32_ph_t*)(example + fh->ph_offset);
 
-	u32 last_time = pit_time_msec();
+	for (usz i = 0; i < fh->sh_count; ++i) {
+		elf32_ph_t* ph = &phs[i];
 
-	// Create a second vram-sized area for double buffering
-	usz vram_size = vga_pixel_count * sizeof(u32);
-	void* vram = vga_vram;
-	vga_vram = pmman_alloc(pmkmap, vram_size);
+		if (ph->type == ELF_PH_TYPE_LOAD)
+			mcpy8((void*)ph->vaddr, example + ph->offset, ph->mem_size);
+	}
 
+	dbg_printf("\nJumping to program entry point 0x%hd\n", fh->entry);
+	dbg_printf("Returned %id\n", ((int(*)())fh->entry)());
+
+
+	dbg_puts("\nFinal kernel memory map:\n");
 	pmman_print_map(&pmman_kernel_map);
 
-	extern i32 mouse_x, mouse_y;
-	while (1) {
-		u32 time = pit_time_msec();
-		// Draw an image at the mouse position
-		if (time % 17 == 0 && last_time != time) {
-			last_time = time;
-			vga_clear(0x000000);
-			vga_put_image(dord, mouse_x, mouse_y, 32, 32);
-			mcpy32(vram, vga_vram, vram_size);
-		}
+	dbg_puts("\n--- DordOS started successfully! ---\n");
+
+	while (1)
 		hlt();
-	}
 }

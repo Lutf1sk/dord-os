@@ -56,7 +56,6 @@ void* pmman_alloc(pmman_map_t* map, usz size) {
 	return null;
 
 found:
-	dbg_printf("allocated %ud -> %ud (%ud blocks)\n", start, start + blocks, blocks);
 	pmman_mark_range(map, start, blocks);
 	return (void*) ((start << map->block_size) + map->base);
 }

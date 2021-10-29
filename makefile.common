@@ -29,6 +29,7 @@ all: $(BIN_DIR)/$(OUT)
 $(BIN_DIR)/$(OUT): $(OBJECTS)
 	$(LNK) -o "$(BIN_DIR)/$(OUT)" $(OBJECTS) $(LNK_FLAGS) $(LNK_LIBS)
 endif
+
 ifdef LIB
 all: $(BIN_DIR)/$(LIB)
 

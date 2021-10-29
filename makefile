@@ -5,6 +5,7 @@ all:
 	make all -C bootsector
 	make all -C write_img
 	make all -C stage2
+	make all -C prog
 	bin/write_img -odordos.img -bbin/bootsector.bin bin/stage2.bin bin/kernel.bin bin/fsroot/*
 
 clean:
@@ -13,6 +14,7 @@ clean:
 	make clean -C bootsector
 	make clean -C kernel
 	make clean -C stage2
+	make clean -C prog
 
 bochs: all
 	bochs -f bochs.conf -q

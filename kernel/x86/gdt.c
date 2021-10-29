@@ -3,7 +3,7 @@
 #include <x86/gdt.h>
 
 void gdt_make_flat(gdt_t* gdt) {
-	mset8(gdt, 0, sizeof(gdt_t) * 3);
+	mset32(gdt, 0, sizeof(gdt_t) * 3);
 
 	gdt[1].access = 0b10011010;
 	gdt[1].base_high = 0x0;
