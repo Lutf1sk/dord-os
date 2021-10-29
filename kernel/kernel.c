@@ -21,6 +21,15 @@
 #include <drivers/keyboard.h>
 #include <drivers/acpi.h>
 
+// typedef
+// struct proc {
+// 	void* sp;
+// 	usz[16] stack;
+// } proc_t;
+// 
+// proc_t procs[16];
+// usz proc_count;
+
 NORETURN
 void panic(const char* str) {
 	dbg_printf(DBG_RED"KERNEL PANIC: %s\n", str);

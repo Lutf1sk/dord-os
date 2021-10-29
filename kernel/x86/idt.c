@@ -7,27 +7,25 @@ void idt_make_default(idt_t* idt) {
 	mset8(&entry, 0, sizeof(entry));
 
 #define ADD_TRAP(n) \
-	extern void irq##n##_handler_asm(void);\
+	extern void isr##n(void);\
  \
-	entry.offset_low = (u32)(usz)irq##n##_handler_asm; \
-	entry.offset_high = (u32)(usz)irq##n##_handler_asm >> 16; \
+	entry.offset_low = (u32)(usz)isr##n; \
+	entry.offset_high = (u32)(usz)isr##n >> 16; \
 	entry.selector = 0x8; \
-	entry.type_attr.gate_type = 0xF; \
-	entry.type_attr.present = 1; \
-	entry.type_attr.privilege = 0; \
-	entry.type_attr.storage_seg = 0; \
+	entry.attr = IDT_GTYPE_INTR32; \
+	entry.attr |= IDT_PRESENT; \
+	entry.attr |= IDT_RING_0; \
 	idt[n] = entry;
 
 #define ADD_INTERRUPT(n) \
-	extern void irq##n##_handler_asm(void);\
+	extern void isr##n(void);\
  \
-	entry.offset_low = (u32)(usz)irq##n##_handler_asm; \
-	entry.offset_high = (u32)(usz)irq##n##_handler_asm >> 16; \
+	entry.offset_low = (u32)(usz)isr##n; \
+	entry.offset_high = (u32)(usz)isr##n >> 16; \
 	entry.selector = 0x8; \
-	entry.type_attr.gate_type = 0xE; \
-	entry.type_attr.present = 1; \
-	entry.type_attr.privilege = 0; \
-	entry.type_attr.storage_seg = 0; \
+	entry.attr = IDT_GTYPE_INTR32; \
+	entry.attr |= IDT_PRESENT; \
+	entry.attr |= IDT_RING_0; \
 	idt[n] = entry;
 
 	// Add exception handlers
@@ -81,4 +79,14 @@ void idt_make_default(idt_t* idt) {
 	ADD_INTERRUPT(45);
 	ADD_INTERRUPT(46);
 	ADD_INTERRUPT(47);
+
+	extern void isr_sys(void);
+
+	entry.offset_low = (u32)(usz)isr_sys;
+	entry.offset_high = (u32)(usz)isr_sys >> 16;
+	entry.selector = 0x8;
+	entry.attr = IDT_GTYPE_INTR32;
+	entry.attr |= IDT_PRESENT;
+	entry.attr |= IDT_RING_0;
+	idt[0xAE] = entry;
 }

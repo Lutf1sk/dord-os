@@ -25,10 +25,27 @@ static void NORETURN hang(void) {
 	}
 }
 
-void irq_handler(i8 irq) {
+typedef
+struct regs {
+	usz a;
+	usz c;
+	usz d;
+	usz b;
+} regs_t;
+
+usz sys_handler(regs_t* regs) {
+	switch (regs->a) {
+	case 1: // Print
+		dbg_write(null, (void*)regs->c, regs->d);
+		return 1;
+		break;
+	}
+}
+
+void interrupt_handler(u8 intr) {
 	// Interrupt handlers
-	if (is_pic_irq(irq)) {
-		irq -= PIC_IRQ_OFFS;
+	if (is_pic_irq(intr)) {
+		u8 irq = intr - PIC_IRQ_OFFS;
 
 		switch (irq) {
 		case IRQ_PIT:
@@ -59,15 +76,15 @@ void irq_handler(i8 irq) {
 		pic_eoi(irq);
 	}
 	// Exception handlers
-	else if (is_exception(irq)) {
-		switch (irq) {
-		case EXCEPT_DIV_BY_0: dbg_puts("Divide by 0 received\n"); break;
-		case EXCEPT_INVAL_OP: dbg_puts("Invalid opcode received\n"); break;
-		case EXCEPT_INVAL_TSS: dbg_puts("Invalid TSS received\n"); break;
-		case EXCEPT_GENERAL_PROTECTION_FAULT: dbg_puts("General protection fault received\n"); break;
-		case EXCEPT_PAGE_FAULT: dbg_puts("Page fault received\n"); break;
+	else if (is_exception(intr)) {
+		switch (intr) {
+		case EXCEPT_DIV_BY_0: dbg_puts("Divide by 0\n"); break;
+		case EXCEPT_INVAL_OP: dbg_puts("Invalid opcode\n"); break;
+		case EXCEPT_INVAL_TSS: dbg_puts("Invalid TSS\n"); break;
+		case EXCEPT_GENERAL_PROTECTION_FAULT: dbg_puts("General protection fault\n"); break;
+		case EXCEPT_PAGE_FAULT: dbg_puts("Page fault\n"); break;
 		default:
-			dbg_printf("Unknown exception %ud received\n", irq);
+			dbg_printf("Unknown exception %ud\n", intr);
 			break;
 		}
 		hang();
