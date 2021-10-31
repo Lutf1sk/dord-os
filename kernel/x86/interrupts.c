@@ -1,5 +1,6 @@
 #include <asm.h>
 #include <debug_io.h>
+#include <proc.h>
 
 #include <x86/interrupts.h>
 #include <x86/exceptions.h>
@@ -38,7 +39,13 @@ usz sys_handler(regs_t* regs) {
 	case 1: // Print
 		dbg_write(null, (void*)regs->c, regs->d);
 		return 1;
-		break;
+
+	case 2: // Yield
+		proc_yield();
+		return 1;
+
+	default:
+		return 0;
 	}
 }
 
@@ -68,12 +75,21 @@ void interrupt_handler(u8 intr) {
 			mouse_handle_interrupt();
 			break;
 
+		case 7:
+			dbg_puts("Spurious interrupt\n");
+			pic_eoi(irq);
+			hang();
+			return; // Return without calling proc_schedule
+
 		default:
-			dbg_printf("Unknown interrupt %ud received\n", irq);
+			dbg_printf("Unknown interrupt %ud\n", irq);
 			break;
 		}
-
 		pic_eoi(irq);
+
+		u32 flags = proc_lock();
+		proc_schedule();
+		proc_release(flags);
 	}
 	// Exception handlers
 	else if (is_exception(intr)) {

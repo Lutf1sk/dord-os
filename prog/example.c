@@ -1,13 +1,22 @@
-#include <common.h>
+#include <syscall.h>
 
-u32 syscall(u32 a, u32 c, u32 d) {
-	u32 ret;
-	__asm__ volatile ("int 0xAE\n" : "=a"(ret) : "a"(a), "c"(c), "d"(d));
-	return ret;
+usz (*dbg_puts)() = (void*)0x100060;
+
+void print(char* str, u32 len) {
+	syscall(1, (u32)str, len);
+}
+
+void yield(void) {
+	syscall(2, 0, 0);
 }
 
 int start(void) {
-	syscall(1, (u32)"Skjut mig\n", 10);
+	char buf[] =  "ASDF\n";
+	print("Entered process\n", 16);
+	while (1) {
+// 		yield();
+//		dbg_puts("Child\n", 6);
+	}
 	return -69;
 }
 

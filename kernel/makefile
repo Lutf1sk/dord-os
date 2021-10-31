@@ -5,11 +5,13 @@ OBJECTS = \
 	debug_io.o \
 	kernel.o \
 	pmman.o \
+	proc.o \
 	x86/entry.o \
 	x86/gdt.o \
 	x86/idt.o \
 	x86/interrupts.o \
 	x86/isr.o \
+	x86/proc.o \
 	drivers/acpi.o \
 	drivers/com.o \
 	drivers/dfs.o \

@@ -3,7 +3,11 @@
 
 #include <drivers/pit.h>
 
-static volatile u32 pit_systime_msec = 0;
+#include <proc.h>
+
+volatile u32 pit_systime_msec = 0;
+
+#include <proc.h>
 
 void pit_handle_interrupt(void) {
 	++pit_systime_msec;

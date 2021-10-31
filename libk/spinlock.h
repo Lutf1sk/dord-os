@@ -4,14 +4,14 @@
 #include "common.h"
 
 typedef
-struct SpinLock {
-	u8 locked;
-} SpinLock;
+struct slock_t {
+	volatile u8 locked;
+} slock_t;
 
-static inline INLINE
-SpinLock make_spinlock() { return (SpinLock) { 0 }; }
+#define SLOCK_INIT() {0}
+#define SLOCK() ((slock_t)SLOCK_INIT)
 
-void spinlock_lock(SpinLock* lock);
-void spinlock_unlock(SpinLock* lock);
+void spinlock_lock(slock_t* lock);
+void spinlock_release(slock_t* lock);
 
 #endif

@@ -3,6 +3,7 @@
 #include <asm.h>
 #include <pmman.h>
 #include <elf.h>
+#include <proc.h>
 
 #include <x86/cpuid.h>
 #include <x86/idt.h>
@@ -20,15 +21,6 @@
 #include <drivers/mouse.h>
 #include <drivers/keyboard.h>
 #include <drivers/acpi.h>
-
-// typedef
-// struct proc {
-// 	void* sp;
-// 	usz[16] stack;
-// } proc_t;
-// 
-// proc_t procs[16];
-// usz proc_count;
 
 NORETURN
 void panic(const char* str) {
@@ -69,7 +61,11 @@ bootinf_t boot_info;
 vbe_mib_t mib;
 memmap_t* memmap;
 
-void kernel_enter() {
+void kernel_proc(void);
+
+proc_t* kproc;
+
+void kernel_enter(void) {
 	dbg_puts(DBG_CYN"\nENTERED KERNEL\n"DBG_RST);
 	dbg_printf("CPU: '%s' %s\n", cpu_vendor_str(), cpu_brand_str());
 
@@ -155,6 +151,29 @@ void kernel_enter() {
 	if (!ide_found)
 		panic("No usable IDE Controller found");
 
+	// Create and switch to kernel process
+	kproc = proc_create(kernel_proc);
+	cli();
+	proc_switch(kproc);
+
+	panic("Failed to enter kernel process");
+}
+
+#include <syscall.h>
+
+void proc_dummy(void) {
+	while (1)
+		vga_vram[mouse_y * vga_res_x + mouse_x] = 0xFF0000;
+}
+
+void proc_dummy2(void) {
+	while (1)
+		vga_vram[mouse_y * vga_res_x + mouse_x] = 0x0000FF;
+}
+
+void kernel_proc(void) {
+	pmman_map_t* pmkmap = &pmman_kernel_map;
+
 	// String tables for IDE drive types/ports
 	static char* drive_type[4] = { "ATA", "ATAPI", "SATA", "SATAPI" };
 	static char* drive_bus[2] = { "Master", "Slave" };
@@ -180,7 +199,6 @@ void kernel_enter() {
 	}
 
 	elf32_fh_t* fh = (elf32_fh_t*)example;
-
 	elf32_ph_t* phs = (elf32_ph_t*)(example + fh->ph_offset);
 
 	for (usz i = 0; i < fh->sh_count; ++i) {
@@ -190,15 +208,13 @@ void kernel_enter() {
 			mcpy8((void*)ph->vaddr, example + ph->offset, ph->mem_size);
 	}
 
-	dbg_printf("\nJumping to program entry point 0x%hd\n", fh->entry);
-	dbg_printf("Returned %id\n", ((int(*)())fh->entry)());
+	proc_t* child = proc_create(proc_dummy2);
+	proc_register(child);
 
-
-	dbg_puts("\nFinal kernel memory map:\n");
-	pmman_print_map(&pmman_kernel_map);
-
-	dbg_puts("\n--- DordOS started successfully! ---\n");
+	child = proc_create(proc_dummy);
+	proc_register(child);
 
 	while (1)
 		hlt();
 }
+

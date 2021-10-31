@@ -44,6 +44,8 @@
 #define MS_BTN_RIGHT	MS_BTN_2
 #define MS_BTN_MIDDLE	MS_BTN_3
 
+extern i32 mouse_x, mouse_y, mouse_z;
+
 void mouse_initialize(u8 port);
 
 void mouse_handle_interrupt(void);

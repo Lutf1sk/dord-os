@@ -26,6 +26,8 @@
 #define PIT_MODE4 (0b100 << 1)
 #define PIT_MODE5 (0b101 << 1)
 
+extern volatile u32 pit_systime_msec;
+
 void pit_handle_interrupt(void);
 
 void pit_initialize(void);

@@ -8,15 +8,24 @@ extern interrupt_handler
 global isr%1
 isr%1:
 	pusha
+	mov ebp, esp
+
+	; SYSV requires DF to be clear on function entry
+	cld
+
+	; Dynamically align the stack because x86 hates consistency
+	and esp, ~0xF
+
 	push dword %1
 	jmp isr_end
 %endmacro
 
 isr_end:
 	call interrupt_handler
-	add esp, 4
+
+	mov esp, ebp
 	popa
-	iret
+	iretd
 
 %assign i 0
 %rep 48
@@ -33,13 +42,15 @@ isr_sys:
 	push edx
 	push ecx
 	push eax
+
 	push esp
 	call sys_handler;
 	add esp, 8
+
 	pop ecx
 	pop edx
 	pop ebx
 	pop esi
 	pop edi
-	iret
+	iretd
 
