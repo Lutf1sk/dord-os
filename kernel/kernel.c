@@ -162,13 +162,15 @@ void kernel_enter(void) {
 #include <syscall.h>
 
 void proc_dummy(void) {
-	while (1)
-		vga_vram[mouse_y * vga_res_x + mouse_x] = 0xFF0000;
+	while (1) {
+		
+	}
 }
 
 void proc_dummy2(void) {
-	while (1)
-		vga_vram[mouse_y * vga_res_x + mouse_x] = 0x0000FF;
+	while (1) {
+		
+	}
 }
 
 void kernel_proc(void) {
@@ -214,7 +216,8 @@ void kernel_proc(void) {
 	child = proc_create(proc_dummy);
 	proc_register(child);
 
-	while (1)
-		hlt();
+	proc_exit();
+
+	panic("Reached end of kernel\n");
 }
 

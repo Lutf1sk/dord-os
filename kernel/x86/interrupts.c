@@ -78,7 +78,7 @@ void interrupt_handler(u8 intr) {
 		case 7:
 			dbg_puts("Spurious interrupt\n");
 			pic_eoi(irq);
-			hang();
+// 			hang();
 			return; // Return without calling proc_schedule
 
 		default:

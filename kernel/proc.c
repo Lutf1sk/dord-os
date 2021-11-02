@@ -8,15 +8,21 @@
 
 proc_t* proc_current = null;
 
+// lists
+static proc_t* ready_q = null;
+static proc_t* blocked_q = null;
+
 slock_t sched_lock = SLOCK_INIT();
+
+#define PROC_SIZE KB(4)
 
 void panic(char*);
 
 proc_t* proc_create(void* entry) {
-	u8* new = pmman_alloc(&pmman_kernel_map, KB(4));
+	u8* new = pmman_alloc(&pmman_kernel_map, PROC_SIZE);
 	proc_t* proc = (proc_t*)new;
 	proc->entry = entry;
-	proc->next = proc;
+	proc->next = null;
 
 	u32* stack = (u32*)(new + KB(4));
 
@@ -28,29 +34,20 @@ proc_t* proc_create(void* entry) {
 void proc_register(proc_t* proc) {
 	u32 flags = proc_lock();
 
-	if (!proc_current)
-		panic("proc_register called while proc_current==null");
-
-	proc->next = proc_current->next;
-	if (!proc->next)
-		proc->next = proc_current;
-	proc_current->next = proc;
+	proc->next = ready_q;
+	ready_q = proc;
 
 	proc_release(flags);
 }
 
-void proc_end(void) {
-	panic("proc_end\n");
-}
+void proc_exit(void) {
+	u32 flags = proc_lock();
 
-void proc_schedule(void) {
-	if (!proc_current || !proc_current->next) {
-		return; // There are no (other) processes
-	}
-	if (pit_systime_msec < proc_current->time_end)
-		return; // The process has time left
+	pmman_free(&pmman_kernel_map, proc_current, PROC_SIZE);
+	proc_current = null;
+	proc_schedule();
 
-	proc_switch(proc_current->next);
+	proc_release(flags);
 }
 
 void proc_yield(void) {
@@ -61,17 +58,39 @@ void proc_yield(void) {
 	proc_release(flags);
 }
 
+void proc_schedule(void) {
+	if (!ready_q || ready_q == proc_current)
+		return;
+
+	if (proc_current) {
+		if (pit_systime_msec < proc_current->time_end)
+			return;
+
+		proc_t** it = &ready_q;
+		while (*it)
+			it = &(*it)->next;
+		*it = proc_current;
+	}
+
+	proc_t* next_proc = ready_q;
+
+	if (ready_q->next)
+		ready_q = ready_q->next;
+
+	next_proc->next = null;
+
+	proc_switch(next_proc);
+}
+
 u32 proc_lock(void) {
 	u32 flags = getf();
 	cli();
 	spinlock_lock(&sched_lock);
-// 	dbg_printf("Lock aquired with flags=%hz\n", flags);
 	return flags;
 }
 
 void proc_release(u32 flags) {
 	spinlock_release(&sched_lock);
-// 	dbg_printf("Lock released with flags=%hz\n", flags);
 	if (flags & EFLAGS_IF)
 		sti();
 }

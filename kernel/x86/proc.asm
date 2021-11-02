@@ -8,13 +8,13 @@ extern pit_systime_msec
 struc proc
 	.sp:		resd 1
 	.entry:		resd 1
-	.time_end:	resd 1
 	.next:		resd 1
+	.time_end:	resd 1
 endstruc
 
 SECTION .text
 global proc_switch
-proc_switch:
+proc_switch: ;	void proc_switch(proc_t* proc)
 	; Push current state
 	push ebx
 	push esi

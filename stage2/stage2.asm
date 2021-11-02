@@ -84,9 +84,9 @@ stage2:
 
 	cmp byte [mib + ModeInfoBlock.bits_per_px], 32
 	jne .loop
-	cmp word [mib + ModeInfoBlock.x_resolution], 800
+	cmp word [mib + ModeInfoBlock.x_resolution], 1024
 	jl .loop
-	cmp word [mib + ModeInfoBlock.y_resolution], 600
+	cmp word [mib + ModeInfoBlock.y_resolution], 768
 	jl .loop
 
 	sub si, 2
