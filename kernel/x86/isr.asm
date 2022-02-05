@@ -33,6 +33,12 @@ isr_end:
 	%assign i i + 1
 %endrep
 
+%assign i 64
+%rep 24
+	def_isr i
+	%assign i i + 1
+%endrep
+
 extern sys_handler
 global isr_sys
 isr_sys:

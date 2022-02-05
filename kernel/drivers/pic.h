@@ -3,8 +3,8 @@
 
 #include <common.h>
 
-#define PIC1		0x20		/* IO base address for master PIC */
-#define PIC2		0xA0		/* IO base address for slave PIC */
+#define PIC1		0x20	// Base address for master PIC
+#define PIC2		0xA0	// Base address for slave PIC
 #define PIC1_CMD	PIC1
 #define PIC1_DATA	(PIC1+1)
 #define PIC2_CMD	PIC2
@@ -16,6 +16,9 @@ void pic_initialize(void);
 
 void pic_mask_irq(u8 irq);
 void pic_unmask_irq(u8 irq);
+
+void pic_mask_all(void);
+void pic_unmask_all(void);
 
 void pic_eoi(u8 irq);
 

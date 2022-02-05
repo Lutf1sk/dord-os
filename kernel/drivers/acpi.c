@@ -68,6 +68,9 @@ static acpi_rsdt_t* rsdt = null;
 static acpi_fadt_t* fadt = null;
 static acpi_madt_t* madt = null;
 
+void* acpi_lapic = NULL;
+void* acpi_ioapic = NULL;
+
 void acpi_initialize(void) {
 	dbg_puts("\nInitializing ACPI...\n");
 	rsdp = acpi_find_rsdp();
@@ -118,6 +121,10 @@ void acpi_initialize(void) {
 				}
 			}
 			u32 cpu_count = active_cpu_count + inactive_cpu_count;
+
+			acpi_lapic = lapic;
+			acpi_ioapic = ioapic;
+
 			dbg_printf(DBG_GRY"CPUs: %id/%id\nLAPIC: 0x%hz, IOAPIC: 0x%hz\n"DBG_RST, active_cpu_count, cpu_count, lapic, ioapic);
 		}
 		else if (strneq(signature, "FACP", 4)) {

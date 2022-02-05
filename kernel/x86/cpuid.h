@@ -4,7 +4,7 @@
 #include <common.h>
 
 typedef
-struct PACKED CPUInfo {
+struct PACKED cpu_info {
 	// ECX
 	u8 sse3		: 1;
 	u8 pclmul	: 1;
@@ -67,10 +67,10 @@ struct PACKED CPUInfo {
 	u8 tm1		: 1;
 	u8 ia64		: 1;
 	u8 pbe		: 1;
-} CPUInfo;
+} cpu_info_t;
 
 typedef
-struct PACKED CPUExtendedInfo {
+struct PACKED cpu_info_ext {
 	// ECX
 	u8 lahf_lm		: 1;
 	u8 cmp_legacy	: 1;
@@ -138,13 +138,13 @@ struct PACKED CPUExtendedInfo {
 	u8 lm		: 1;
 	u8 ext3dnow	: 1;
 	u8 s_3dnow	: 1;
-} CPUExtendedInfo;
+} cpu_info_ext_t;
 
 static
-const char* cpu_vendor_str() {
+const char* cpu_vendor_str(void) {
 	static char str[13];
 
-	__asm__ volatile ("mov ebx, 0	\n"
+	asm volatile ("mov ebx, 0	\n"
 				  "push %0		\n"
 				  "mov eax, 0	\n"
 				  "cpuid		\n"
@@ -161,9 +161,9 @@ const char* cpu_vendor_str() {
 }
 
 static inline INLINE
-u32 cpu_highest_ext_func() {
+u32 cpu_highest_ext_func(void) {
 	u32 highest_function = 0;
-	__asm__ volatile ("mov ebx, 0			\n"
+	asm volatile ("mov ebx, 0			\n"
 				  "mov eax, 0x80000000	\n"
 				  "cpuid				\n"
 				  : "=a"(highest_function)
@@ -173,10 +173,10 @@ u32 cpu_highest_ext_func() {
 }
 
 static
-const char* cpu_brand_str() {
+const char* cpu_brand_str(void) {
 	static char str[48];
 
-	__asm__ volatile ("mov edi, %0			\n"
+	asm volatile ("mov edi, %0			\n"
 				  "mov ebx, 0			\n"
 				  "mov eax, 0x80000002	\n"
 				  "cpuid				\n"
@@ -208,8 +208,7 @@ const char* cpu_brand_str() {
 }
 
 static inline INLINE
-CPUInfo cpu_info() {
-	CPUInfo info;
+void cpu_info(cpu_info_t* info) {
 
 	asm volatile ("mov ebx, 0	\n"
 				  "push %0		\n"
@@ -218,16 +217,12 @@ CPUInfo cpu_info() {
 				  "pop %0		\n"
 				  "mov [%0 + 0], ecx	\n"
 				  "mov [%0 + 4], edx	\n"
-				  : : "a"(&info)
+				  : : "a"(info)
 				  : "ebx", "ecx", "edx");
-
-	return info;
 }
 
 static inline INLINE
-CPUExtendedInfo cpu_extended_info() {
-	CPUExtendedInfo info;
-
+void cpu_extended_info(cpu_info_ext_t* info) {
 	asm volatile ("mov ebx, 0			\n"
 				  "push %0				\n"
 				  "mov eax, 0x80000001	\n"
@@ -235,11 +230,8 @@ CPUExtendedInfo cpu_extended_info() {
 				  "pop %0				\n"
 				  "mov [%0 + 0], ecx	\n"
 				  "mov [%0 + 4], edx	\n"
-				  : : "a"(&info)
+				  : : "a"(info)
 				  : "ebx", "ecx", "edx");
-
-	return info;
-
 }
 
 #endif

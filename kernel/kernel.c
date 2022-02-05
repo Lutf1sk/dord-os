@@ -4,10 +4,13 @@
 #include <pmman.h>
 #include <elf.h>
 #include <proc.h>
+#include <syscall.h>
 
+#include <x86/interrupts.h>
 #include <x86/cpuid.h>
 #include <x86/idt.h>
 #include <x86/gdt.h>
+#include <x86/msr.h>
 
 #include <drivers/memmap.h>
 #include <drivers/dfs.h>
@@ -21,6 +24,7 @@
 #include <drivers/mouse.h>
 #include <drivers/keyboard.h>
 #include <drivers/acpi.h>
+#include <drivers/apic.h>
 
 NORETURN
 void panic(const char* str) {
@@ -69,6 +73,9 @@ void kernel_enter(void) {
 	dbg_puts(DBG_CYN"\nENTERED KERNEL\n"DBG_RST);
 	dbg_printf("CPU: '%s' %s\n", cpu_vendor_str(), cpu_brand_str());
 
+	cpu_info_t cpuinf;
+	cpu_info(&cpuinf);
+
 	// Copy the important structures from the stage2 memory
 	boot_info = *boot_info_ptr;
 	mib = *boot_info.mib;
@@ -99,10 +106,35 @@ void kernel_enter(void) {
 	// Initialize ACPI
 	acpi_initialize();
 
-	// Remap PIC and unmask IRQs
+	// Remap PIC
 	pic_initialize();
-	for (usz i = 0; i < 16; ++i)
-		pic_unmask_irq(i);
+
+	// Find APIC base address
+	void* lapic_base = NULL, *ioapic_base = (void*)APIC_IO_BASE_DEFAULT;
+	if (acpi_lapic) {
+		lapic_base = acpi_lapic;
+		ioapic_base = acpi_ioapic;
+	}
+	else if (cpuinf.msr && cpuinf.apic) {
+		u32 eax, edx;
+		rdmsr(MSR_APIC_BASE, &eax, &edx);
+		edx |= 1 << 11;
+		wrmsr(MSR_APIC_BASE, eax, edx);
+		lapic_base = (void*)(eax & 0xfffff000);
+	}
+
+ 	// Initialize APIC if it is available
+	if (lapic_base) {
+		dbg_printf(DBG_GRY"Interrupt mode: APIC\n"DBG_RST);
+		interrupt_mode = INTM_APIC;
+		pic_mask_all();
+
+		apic_initialize(lapic_base, ioapic_base);
+	}
+	else { // Otherwise, unmask all PIC IRQs
+		dbg_printf(DBG_GRY"Interrupt mode: Legacy PIC\n"DBG_RST);
+		pic_unmask_all();
+	}
 
 	sti(); // Enable interrupts
 
@@ -163,13 +195,13 @@ void kernel_enter(void) {
 
 void proc_dummy(void) {
 	while (1) {
-		
+// 		dbg_printf("1\n");
 	}
 }
 
 void proc_dummy2(void) {
 	while (1) {
-		
+// 		dbg_printf("2\n");
 	}
 }
 
@@ -209,6 +241,10 @@ void kernel_proc(void) {
 		if (ph->type == ELF_PH_TYPE_LOAD)
 			mcpy8((void*)ph->vaddr, example + ph->offset, ph->mem_size);
 	}
+
+// 	syscall(1, (u32)"ASDF\n", 5);
+// 	syscall(1, (u32)"ASDF\n", 5);
+// 	syscall(1, (u32)"ASDF\n", 5);
 
 	proc_t* child = proc_create(proc_dummy2);
 	proc_register(child);

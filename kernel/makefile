@@ -13,6 +13,7 @@ OBJECTS = \
 	x86/isr.o \
 	x86/proc.o \
 	drivers/acpi.o \
+	drivers/apic.o \
 	drivers/com.o \
 	drivers/dfs.o \
 	drivers/ide.o \

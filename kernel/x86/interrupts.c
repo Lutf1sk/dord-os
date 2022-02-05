@@ -6,6 +6,9 @@
 #include <x86/exceptions.h>
 
 #include <drivers/pic.h>
+#include <drivers/apic.h>
+
+u8 interrupt_mode = INTM_PIC;
 
 extern void pit_handle_interrupt(void);
 extern void kb_handle_interrupt(void);
@@ -13,6 +16,10 @@ extern void mouse_handle_interrupt(void);
 
 static u8 is_pic_irq(u8 irq) {
 	return irq >= PIC_IRQ_OFFS && irq < PIC_IRQ_OFFS + 16;
+}
+
+static u8 is_apic_irq(u8 irq) {
+	return irq >= APIC_IRQ_OFFS && irq < APIC_IRQ_OFFS + 24;
 }
 
 static u8 is_exception(u8 irq) {
@@ -50,9 +57,16 @@ usz sys_handler(regs_t* regs) {
 }
 
 void interrupt_handler(u8 intr) {
-	// Interrupt handlers
-	if (is_pic_irq(intr)) {
-		u8 irq = intr - PIC_IRQ_OFFS;
+	if (intr == 0xFF)
+		goto spurious;
+
+	// IRQ handlers
+	if (is_pic_irq(intr) || is_apic_irq(intr)) {
+		u8 irq = intr;
+		if (interrupt_mode == INTM_PIC)
+			irq -= PIC_IRQ_OFFS;
+		else if (interrupt_mode == INTM_APIC)
+ 			irq -= APIC_IRQ_OFFS;
 
 		switch (irq) {
 		case IRQ_PIT:
@@ -60,7 +74,11 @@ void interrupt_handler(u8 intr) {
 			break;
 
 		case IRQ_KB:
+			dbg_printf("keyboard interrupt\n");
 			kb_handle_interrupt();
+			break;
+
+		case IRQ_CASCADE:
 			break;
 
 		case IRQ_ATA1:
@@ -75,17 +93,20 @@ void interrupt_handler(u8 intr) {
 			mouse_handle_interrupt();
 			break;
 
-		case 7:
+		case 7: spurious:
 			dbg_puts("Spurious interrupt\n");
 			pic_eoi(irq);
-// 			hang();
 			return; // Return without calling proc_schedule
 
 		default:
 			dbg_printf("Unknown interrupt %ud\n", irq);
 			break;
 		}
-		pic_eoi(irq);
+
+		if (interrupt_mode == INTM_PIC)
+			pic_eoi(irq);
+		else if (interrupt_mode == INTM_APIC)
+			apic_eoi(irq);
 
 		u32 flags = proc_lock();
 		proc_schedule();

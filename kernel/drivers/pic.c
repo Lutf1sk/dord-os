@@ -59,6 +59,16 @@ void pic_unmask_irq(u8 irq) {
 	outb(port, mask & ~(1 << irq));
 }
 
+void pic_mask_all(void) {
+	outb(PIC1_DATA, 0xFF);
+	outb(PIC2_DATA, 0xFF);
+}
+
+void pic_unmask_all(void) {
+	outb(PIC1_DATA, 0);
+	outb(PIC2_DATA, 0);
+}
+
 void pic_eoi(u8 irq) {
 	if (irq >= 8)
 		outb(PIC2_CMD, PIC_EOI);

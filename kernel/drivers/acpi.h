@@ -137,6 +137,9 @@ struct PACKED acpi_fadt {
 	acpi_gas_t x_gpe1_block;
 } acpi_fadt_t;
 
+extern void* acpi_lapic;
+extern void* acpi_ioapic;
+
 void acpi_initialize(void);
 
 void acpi_enable(void);

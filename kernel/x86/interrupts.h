@@ -13,4 +13,9 @@
 #define IRQ_ATA1 14
 #define IRQ_ATA2 15
 
+#define INTM_PIC 0
+#define INTM_APIC 1
+
+extern u8 interrupt_mode;
+
 #endif
