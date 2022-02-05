@@ -8,6 +8,7 @@
 #include <common.h>
 
 void apic_initialize(void* lbase, void* iobase);
+void apic_start_core(u8 core);
 
 void apic_eoi(u8 irq);
 

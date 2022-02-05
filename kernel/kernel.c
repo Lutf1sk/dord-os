@@ -5,6 +5,7 @@
 #include <elf.h>
 #include <proc.h>
 #include <syscall.h>
+#include <spinlock.h>
 
 #include <x86/interrupts.h>
 #include <x86/cpuid.h>
@@ -69,6 +70,19 @@ void kernel_proc(void);
 
 proc_t* kproc;
 
+slock_t ap_init_lock;
+
+void ap_enter(void) {
+	lidt(&idt_desc);
+	sti();
+
+	dbg_printf(DBG_GRY"CPU%ud: Success!\n"DBG_RST, cpu_lapic_id());
+	spinlock_release(&ap_init_lock);
+
+	while (1)
+		hlt();
+}
+
 void kernel_enter(void) {
 	dbg_puts(DBG_CYN"\nENTERED KERNEL\n"DBG_RST);
 	dbg_printf("CPU: '%s' %s\n", cpu_vendor_str(), cpu_brand_str());
@@ -100,7 +114,7 @@ void kernel_enter(void) {
 	// Write and load default IDT
 	idt_make_default(idt);
 	idt_desc.size = sizeof(idt);
-	idt_desc.addr = (u32)idt;
+	idt_desc.addr = (usz)idt;
 	lidt(&idt_desc);
 
 	// Initialize ACPI
@@ -183,6 +197,39 @@ void kernel_enter(void) {
 	if (!ide_found)
 		panic("No usable IDE Controller found");
 
+	// Start APs
+	typedef
+	struct ap_trampoline_data {
+		u64 gdt_addr;
+		u64 gdt_len;
+		u64 entry_point;
+	} ap_trampoline_data_t;
+
+	#define AP_TRAMPOLINE_CODE ((void*)0x8000)
+	#define AP_TRAMPOLINE_DATA ((void*)0x8500)
+
+	extern void _binary_x86_trampoline_bin_start(void);
+	extern void _binary_x86_trampoline_bin_end(void);
+	extern void _binary_x86_trampoline_bin_size(void);
+
+	mcpy32(AP_TRAMPOLINE_CODE, _binary_x86_trampoline_bin_start, (usz)_binary_x86_trampoline_bin_size);
+
+	ap_trampoline_data_t* td = AP_TRAMPOLINE_DATA;
+	td->entry_point = (usz)ap_enter;
+	td->gdt_len = sizeof(gdt);
+	td->gdt_addr = (usz)gdt;
+
+	dbg_printf("\nInitializing application cores...\n");
+
+	usz bsp_id = cpu_lapic_id();
+
+	for (usz i = 0; i < acpi_cpu_count; ++i) {
+		if (acpi_lapic_ids[i] != bsp_id) {
+			spinlock_lock(&ap_init_lock);
+			apic_start_core(acpi_lapic_ids[i]);
+		}
+	}
+
 	// Create and switch to kernel process
 	kproc = proc_create(kernel_proc);
 	cli();
@@ -241,10 +288,6 @@ void kernel_proc(void) {
 		if (ph->type == ELF_PH_TYPE_LOAD)
 			mcpy8((void*)ph->vaddr, example + ph->offset, ph->mem_size);
 	}
-
-// 	syscall(1, (u32)"ASDF\n", 5);
-// 	syscall(1, (u32)"ASDF\n", 5);
-// 	syscall(1, (u32)"ASDF\n", 5);
 
 	proc_t* child = proc_create(proc_dummy2);
 	proc_register(child);

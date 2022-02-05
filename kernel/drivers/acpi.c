@@ -71,6 +71,9 @@ static acpi_madt_t* madt = null;
 void* acpi_lapic = NULL;
 void* acpi_ioapic = NULL;
 
+u8 acpi_cpu_count = 0;
+u8 acpi_lapic_ids[64];
+
 void acpi_initialize(void) {
 	dbg_puts("\nInitializing ACPI...\n");
 	rsdp = acpi_find_rsdp();
@@ -102,7 +105,6 @@ void acpi_initialize(void) {
 		if (strneq(signature, "APIC", 4)) {
 			madt = (acpi_madt_t*)header;
 
-			u32 active_cpu_count = 0, inactive_cpu_count = 0;
 			void* lapic = (void*)madt->lapic_addr, *ioapic = null;
 			u8* it = madt->intr_devs, *end = it + header->len - sizeof(acpi_madt_t);
 
@@ -111,21 +113,18 @@ void acpi_initialize(void) {
 				switch (it[0]) {
 				case 0: {
 					u32 flags = *((u32*)&it[4]);
-					if (flags & 1) // CPU Enabled bit
-						++active_cpu_count;
-					else if (flags & 2) // Online Capable bit
-						++inactive_cpu_count;
+					if ((flags & 1) || (flags & 2)) {
+						acpi_lapic_ids[acpi_cpu_count] = it[3];
+						dbg_printf(DBG_GRY"CPU%ud: apic_id=%ud\n"DBG_RST, acpi_cpu_count++, it[3]);
+					}
 				}	break;
 				case 1: ioapic = (void*) *((u32*)&it[4]); break;
 				case 5: lapic = (void*) *((u32*)&it[4]); break;
 				}
 			}
-			u32 cpu_count = active_cpu_count + inactive_cpu_count;
 
 			acpi_lapic = lapic;
 			acpi_ioapic = ioapic;
-
-			dbg_printf(DBG_GRY"CPUs: %id/%id\nLAPIC: 0x%hz, IOAPIC: 0x%hz\n"DBG_RST, active_cpu_count, cpu_count, lapic, ioapic);
 		}
 		else if (strneq(signature, "FACP", 4)) {
 			fadt = (acpi_fadt_t*)header;

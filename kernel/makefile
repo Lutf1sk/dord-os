@@ -31,9 +31,38 @@ OBJECTS = \
 
 LNK_LIBS = ../bin/libk.a
 
-CC_FLAGS = -I./ -I../libk/ -nostdlib -ffreestanding -fno-stack-protector -fno-pie -fno-pic -m32
+CC_FLAGS = -O2 -masm=intel -I./ -I../libk/ -nostdlib -ffreestanding -fno-stack-protector -fno-pie -fno-pic -m32
 LNK_FLAGS = -T linker.ld -melf_i386
 ASM_FLAGS = -felf32
 
-include ../makefile.common
+BIN_DIR = ../bin/
+
+DEPS = $(patsubst %.o,%.d,$(OBJECTS))
+
+ASM = nasm
+CC = cc
+LNK = ld
+
+-include $(DEPS)
+
+all: $(BIN_DIR)/$(OUT)
+
+$(BIN_DIR)/$(OUT): $(OBJECTS) x86/trampoline.asm
+	@$(ASM) -fbin x86/trampoline.asm -o x86/trampoline.bin
+	@objcopy -O elf32-i386 -B i386 -I binary x86/trampoline.bin trampoline.o
+	$(LNK) -o "$(BIN_DIR)/$(OUT)" $(OBJECTS) $(LNK_FLAGS) $(LNK_LIBS) trampoline.o
+
+%.o: %.c
+	@echo Compiling $<...
+	@$(CC) $(CC_FLAGS) -MM -MT $@ -MF $(patsubst %.o,%.d,$@) $<
+	@$(CC) $(CC_FLAGS) -o $@ -c $<
+
+%.o: %.asm
+	@echo Compiling $<...
+	@$(ASM) $(ASM_FLAGS) -M -MT $@ -MF $(patsubst %.o,%.d,$@) $<
+	@$(ASM) $(ASM_FLAGS) -o $@ $<
+
+.PHONY: clean all
+clean:
+	-rm "$(BIN_DIR)/$(OUT)" $(OBJECTS) $(DEPS)
 

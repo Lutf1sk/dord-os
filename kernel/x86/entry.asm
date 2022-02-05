@@ -1,7 +1,6 @@
-[BITS 32]
-
 extern kernel_enter
 
+[BITS 32]
 SECTION .entry
 global start
 start:

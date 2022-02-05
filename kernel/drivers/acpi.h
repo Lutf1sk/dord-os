@@ -140,6 +140,9 @@ struct PACKED acpi_fadt {
 extern void* acpi_lapic;
 extern void* acpi_ioapic;
 
+extern u8 acpi_cpu_count;
+extern u8 acpi_lapic_ids[64];
+
 void acpi_initialize(void);
 
 void acpi_enable(void);

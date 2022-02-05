@@ -20,4 +20,4 @@ bochs: all
 	bochs -f bochs.conf -q
 
 run: all
-	qemu-system-i386 -smp 2 -mem-prealloc -m 512M -soundhw pcspk -serial file:/dev/stdout -drive format=raw,file=dordos.img
+	qemu-system-i386 -smp 4 -mem-prealloc -m 512M -soundhw pcspk -serial file:/dev/stdout -drive format=raw,file=dordos.img

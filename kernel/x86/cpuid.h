@@ -234,4 +234,15 @@ void cpu_extended_info(cpu_info_ext_t* info) {
 				  : "ebx", "ecx", "edx");
 }
 
+static inline INLINE
+u8 cpu_lapic_id(void) {
+	u32 id = 0;
+	asm volatile ("mov eax, 1			\n"
+				  "cpuid				\n"
+				  : "=b"(id)
+				  : : "eax");
+
+	return id >> 24;
+}
+
 #endif
