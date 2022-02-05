@@ -229,6 +229,7 @@ void kernel_enter(void) {
 			apic_start_core(acpi_lapic_ids[i]);
 		}
 	}
+	spinlock_lock(&ap_init_lock);
 
 	// Create and switch to kernel process
 	kproc = proc_create(kernel_proc);
