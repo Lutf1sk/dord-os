@@ -74,7 +74,12 @@ void* acpi_ioapic = NULL;
 u8 acpi_cpu_count = 0;
 u8 acpi_lapic_ids[64];
 
+u8 acpi_intr_mappings[24];
+
 void acpi_initialize(void) {
+	for (usz i = 0; i < sizeof(acpi_intr_mappings); ++i)
+		acpi_intr_mappings[i] = i;
+
 	dbg_puts("\nInitializing ACPI...\n");
 	rsdp = acpi_find_rsdp();
 	if (!rsdp) {
@@ -119,6 +124,12 @@ void acpi_initialize(void) {
 					}
 				}	break;
 				case 1: ioapic = (void*) *((u32*)&it[4]); break;
+
+				case 2:
+					acpi_intr_mappings[it[4]] = it[3];
+					dbg_printf(DBG_GRY"IRQ %ud -> %ud\n"DBG_RST, it[4], it[3]);
+					break;
+
 				case 5: lapic = (void*) *((u32*)&it[4]); break;
 				}
 			}

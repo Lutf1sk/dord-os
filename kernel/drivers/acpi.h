@@ -143,6 +143,8 @@ extern void* acpi_ioapic;
 extern u8 acpi_cpu_count;
 extern u8 acpi_lapic_ids[64];
 
+extern u8 acpi_intr_mappings[24];
+
 void acpi_initialize(void);
 
 void acpi_enable(void);

@@ -143,7 +143,7 @@ void kernel_enter(void) {
 		interrupt_mode = INTM_APIC;
 		pic_mask_all();
 
-		apic_initialize(lapic_base, ioapic_base);
+		apic_initialize(lapic_base, ioapic_base, acpi_intr_mappings);
 	}
 	else { // Otherwise, unmask all PIC IRQs
 		dbg_printf(DBG_GRY"Interrupt mode: Legacy PIC\n"DBG_RST);
@@ -154,7 +154,7 @@ void kernel_enter(void) {
 
 	// Initialize VGA framebuffer
 	vga_initialize((void*)boot_info.mib->phys_base_addr, boot_info.mib->x_resolution, boot_info.mib->y_resolution);
-	vga_clear(0x000000);
+	vga_clear(0x0F0F0F);
 
 	// Initialize PIT
 	//pcspk_connect_pit();
@@ -198,38 +198,40 @@ void kernel_enter(void) {
 		panic("No usable IDE Controller found");
 
 	// Start APs
-	typedef
-	struct ap_trampoline_data {
-		u64 gdt_addr;
-		u64 gdt_len;
-		u64 entry_point;
-	} ap_trampoline_data_t;
+	if (lapic_base && acpi_cpu_count > 0) {
+		typedef
+		struct ap_trampoline_data {
+			u64 gdt_addr;
+			u64 gdt_len;
+			u64 entry_point;
+		} ap_trampoline_data_t;
 
-	#define AP_TRAMPOLINE_CODE ((void*)0x8000)
-	#define AP_TRAMPOLINE_DATA ((void*)0x8500)
+		#define AP_TRAMPOLINE_CODE ((void*)0x8000)
+		#define AP_TRAMPOLINE_DATA ((void*)0x8500)
 
-	extern void _binary_x86_trampoline_bin_start(void);
-	extern void _binary_x86_trampoline_bin_end(void);
-	extern void _binary_x86_trampoline_bin_size(void);
+		extern void _binary_x86_trampoline_bin_start(void);
+		extern void _binary_x86_trampoline_bin_end(void);
+		extern void _binary_x86_trampoline_bin_size(void);
 
-	mcpy32(AP_TRAMPOLINE_CODE, _binary_x86_trampoline_bin_start, (usz)_binary_x86_trampoline_bin_size);
+		mcpy32(AP_TRAMPOLINE_CODE, _binary_x86_trampoline_bin_start, (usz)_binary_x86_trampoline_bin_size);
 
-	ap_trampoline_data_t* td = AP_TRAMPOLINE_DATA;
-	td->entry_point = (usz)ap_enter;
-	td->gdt_len = sizeof(gdt);
-	td->gdt_addr = (usz)gdt;
+		ap_trampoline_data_t* td = AP_TRAMPOLINE_DATA;
+		td->entry_point = (usz)ap_enter;
+		td->gdt_len = sizeof(gdt);
+		td->gdt_addr = (usz)gdt;
 
-	dbg_printf("\nInitializing application cores...\n");
+		dbg_printf("\nInitializing application cores...\n");
 
-	usz bsp_id = cpu_lapic_id();
+		usz bsp_id = cpu_lapic_id();
 
-	for (usz i = 0; i < acpi_cpu_count; ++i) {
-		if (acpi_lapic_ids[i] != bsp_id) {
-			spinlock_lock(&ap_init_lock);
-			apic_start_core(acpi_lapic_ids[i]);
+		for (usz i = 0; i < acpi_cpu_count; ++i) {
+			if (acpi_lapic_ids[i] != bsp_id) {
+				spinlock_lock(&ap_init_lock);
+				apic_start_core(acpi_lapic_ids[i]);
+			}
 		}
+		spinlock_lock(&ap_init_lock);
 	}
-	spinlock_lock(&ap_init_lock);
 
 	// Create and switch to kernel process
 	kproc = proc_create(kernel_proc);

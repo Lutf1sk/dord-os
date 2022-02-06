@@ -31,8 +31,6 @@ prot:
 	mov gs, ax
 	mov ss, ax
 
-	mov dword [0xFD000004], 0xFFFFFFFF
-
 	mov esp, 0x8500
 
 	jmp [0x8510]

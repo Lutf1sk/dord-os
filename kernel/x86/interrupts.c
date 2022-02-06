@@ -60,14 +60,18 @@ void interrupt_handler(u8 intr) {
 	if (intr == 0xFF)
 		goto spurious;
 
-	// IRQ handlers
-	if (is_pic_irq(intr) || is_apic_irq(intr)) {
-		u8 irq = intr;
-		if (interrupt_mode == INTM_PIC)
-			irq -= PIC_IRQ_OFFS;
-		else if (interrupt_mode == INTM_APIC)
- 			irq -= APIC_IRQ_OFFS;
+	u8 apic = is_apic_irq(intr);
+	u8 pic = is_pic_irq(intr);
+	u8 is_irq = apic || pic;
 
+	u8 irq = intr;
+	if (apic)
+		irq -= APIC_IRQ_OFFS;
+	else if (pic)
+		irq -= PIC_IRQ_OFFS;
+
+	// IRQ handlers
+	if (is_irq) {
 		switch (irq) {
 		case IRQ_PIT:
 			pit_handle_interrupt();
@@ -103,9 +107,9 @@ void interrupt_handler(u8 intr) {
 			break;
 		}
 
-		if (interrupt_mode == INTM_PIC)
+		if (pic)
 			pic_eoi(irq);
-		else if (interrupt_mode == INTM_APIC)
+		else if (apic)
 			apic_eoi(irq);
 
 		u32 flags = proc_lock();

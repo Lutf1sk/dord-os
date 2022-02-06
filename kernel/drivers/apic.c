@@ -19,6 +19,12 @@
 #define LAPIC_REG_ICR1		0x300
 #define LAPIC_REG_ICR2		0x310
 
+#define LAPIC_REG_LVT_TMR	0x320
+
+#define LAPIC_REG_TMRINITC	0x380
+#define LAPIC_REG_TMRCURRC	0x390
+#define LAPIC_REG_TMRDIV	0x3E0
+
 #define IOAPIC_REG_ID		0x00
 #define IOAPIC_REG_VERSION	0x01
 #define IOAPIC_REG_ARBPRI	0x02
@@ -50,7 +56,7 @@ u32 ioapic_read(u8 reg) {
 	return ioapic_base[4];
 }
 
-void apic_initialize(void* lbase, void* iobase) {
+void apic_initialize(void* lbase, void* iobase, u8* irq_mappings) {
 	dbg_printf("\nInitializing APIC...\n");
 
 	lapic_base = lbase;
@@ -63,12 +69,18 @@ void apic_initialize(void* lbase, void* iobase) {
 	lapic_write(LAPIC_REG_LDR, 0xFF000000);
 	lapic_write(LAPIC_REG_TPR, 0);
 
+	lapic_write(LAPIC_REG_LVT_TMR, APIC_IRQ_OFFS);
+	lapic_write(LAPIC_REG_TMRDIV, 0x03);
+
 	for (usz i = 0; i < 24; ++i) {
-		u32 redir_lo = (APIC_IRQ_OFFS + i);
+		u32 redir_lo = (APIC_IRQ_OFFS + irq_mappings[i]);
 
 		ioapic_write(IOAPIC_REG_REDIR_LO(i), redir_lo);
 		ioapic_write(IOAPIC_REG_REDIR_HI(i), 0);
 	}
+
+// 	ioapic_write(IOAPIC_REG_REDIR_LO(0), APIC_IRQ_OFFS | (1 << 15));
+// 	ioapic_write(IOAPIC_REG_REDIR_HI(0), 0);
 }
 
 void apic_eoi(u8 irq) {
@@ -90,10 +102,14 @@ void apic_start_core(u8 core) {
 	do asm volatile ("pause" : : : "memory");
 	while (lapic_read(LAPIC_REG_ICR1) & (1 << 12));
 
+	pit_sleep_msec(10);
+
 	for (usz i = 0; i < 1; ++i) {
 		lapic_write(LAPIC_REG_ERR, 0);
 		lapic_write(LAPIC_REG_ICR2, core << 24);
 		lapic_write(LAPIC_REG_ICR1, 0x000608);
+
+		pit_sleep_msec(1);
 
 		do asm volatile ("pause" : : : "memory");
 		while (lapic_read(LAPIC_REG_ICR1) & (1 << 12));
