@@ -2,6 +2,8 @@
 #include <debug_io.h>
 #include <proc.h>
 
+#include <x86/cpuid.h>
+
 #include <x86/interrupts.h>
 #include <x86/exceptions.h>
 
@@ -70,12 +72,23 @@ void interrupt_handler(u8 intr) {
 	else if (pic)
 		irq -= PIC_IRQ_OFFS;
 
+// 	dbg_printf("[CPU%ud] I%ud\n", cpu_lapic_id(), irq);
+
 	// IRQ handlers
 	if (is_irq) {
 		switch (irq) {
 		case IRQ_PIT:
 			pit_handle_interrupt();
-			break;
+
+			if (pic)
+				pic_eoi(irq);
+			else if (apic)
+				apic_eoi(irq);
+
+			volatile u32 flags = proc_lock();
+			proc_schedule();
+			proc_release(flags);
+			return;
 
 		case IRQ_KB:
 			dbg_printf("keyboard interrupt\n");
@@ -99,8 +112,7 @@ void interrupt_handler(u8 intr) {
 
 		case 7: spurious:
 			dbg_puts("Spurious interrupt\n");
-			pic_eoi(irq);
-			return; // Return without calling proc_schedule
+			break;
 
 		default:
 			dbg_printf("Unknown interrupt %ud\n", irq);
@@ -111,10 +123,6 @@ void interrupt_handler(u8 intr) {
 			pic_eoi(irq);
 		else if (apic)
 			apic_eoi(irq);
-
-		u32 flags = proc_lock();
-		proc_schedule();
-		proc_release(flags);
 	}
 	// Exception handlers
 	else if (is_exception(intr)) {

@@ -51,10 +51,10 @@ void io_wait(void) {
 static INLINE
 void hlt(void) { __asm__ volatile ("hlt\n"); }
 
-static INLINE
+static INLINE NOREORDER
 void cli(void) { __asm__ volatile ("cli\n"); }
 
-static INLINE
+static INLINE NOREORDER
 void sti(void) { __asm__ volatile ("sti\n"); }
 
 
@@ -68,11 +68,16 @@ void lgdt(void* gdt_addr) {
 	asm volatile ("lgdt [%0]" : : "r"(gdt_addr));
 }
 
-static INLINE
-u32 getf(void) {// Get current interrupt flag
+static INLINE NOREORDER
+u32 getf(void) {
 	u32 ret;
-	asm volatile ("pushfd\npop %0\n\n" : "=Nd"(ret));
+	asm volatile ("pushfd\npop %0\n" : "=Nd"(ret));
 	return ret;
+}
+
+static INLINE NOREORDER
+void setf(u32 flags) {
+	asm volatile ("push %0\npopfd\n" : : "Nd"(flags));
 }
 
 #endif

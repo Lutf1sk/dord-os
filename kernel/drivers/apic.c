@@ -2,6 +2,7 @@
 #include <asm.h>
 
 #include <drivers/apic.h>
+#include <drivers/pit.h>
 
 #define LAPIC_REG_ID		0x20
 #define LAPIC_REG_VERSION	0x30
@@ -69,8 +70,8 @@ void apic_initialize(void* lbase, void* iobase, u8* irq_mappings) {
 	lapic_write(LAPIC_REG_LDR, 0xFF000000);
 	lapic_write(LAPIC_REG_TPR, 0);
 
-	lapic_write(LAPIC_REG_LVT_TMR, APIC_IRQ_OFFS);
-	lapic_write(LAPIC_REG_TMRDIV, 0x03);
+// 	lapic_write(LAPIC_REG_LVT_TMR, APIC_IRQ_OFFS);
+// 	lapic_write(LAPIC_REG_TMRDIV, 0x03);
 
 	for (usz i = 0; i < 24; ++i) {
 		u32 redir_lo = (APIC_IRQ_OFFS + irq_mappings[i]);
@@ -78,9 +79,6 @@ void apic_initialize(void* lbase, void* iobase, u8* irq_mappings) {
 		ioapic_write(IOAPIC_REG_REDIR_LO(i), redir_lo);
 		ioapic_write(IOAPIC_REG_REDIR_HI(i), 0);
 	}
-
-// 	ioapic_write(IOAPIC_REG_REDIR_LO(0), APIC_IRQ_OFFS | (1 << 15));
-// 	ioapic_write(IOAPIC_REG_REDIR_HI(0), 0);
 }
 
 void apic_eoi(u8 irq) {

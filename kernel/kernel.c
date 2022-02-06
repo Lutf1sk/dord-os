@@ -46,6 +46,8 @@ idt_desc_t idt_desc;
 ide_drive_t* drives = 0;
 u32 drive_count = 0;
 
+u32 kproc_flags = 0;
+
 extern void reload_segments_asm(void);
 
 // The bootinf structure is filled by entry.asm,
@@ -66,7 +68,8 @@ bootinf_t boot_info;
 vbe_mib_t mib;
 memmap_t* memmap;
 
-void kernel_proc(void);
+void proc_dummy(void);
+void proc_dummy2(void);
 
 proc_t* kproc;
 
@@ -233,73 +236,26 @@ void kernel_enter(void) {
 		spinlock_lock(&ap_init_lock);
 	}
 
-	// Create and switch to kernel process
-	kproc = proc_create(kernel_proc);
 	cli();
-	proc_switch(kproc);
 
-	panic("Failed to enter kernel process");
+	proc_t* child = proc_create(proc_dummy, "Dummy1");
+	proc_register(child);
+
+	child = proc_create(proc_dummy2, "Dummy2");
+	proc_register(child);
+
+	proc_schedule();
 }
-
-#include <syscall.h>
 
 void proc_dummy(void) {
 	while (1) {
-// 		dbg_printf("1\n");
+		vga_vram[(vga_res_x * mouse_y) + mouse_x] = 0xFFFF00;
 	}
 }
 
 void proc_dummy2(void) {
 	while (1) {
-// 		dbg_printf("2\n");
+		vga_vram[(vga_res_x * mouse_y) + mouse_x] = 0x00FFFF;
 	}
-}
-
-void kernel_proc(void) {
-	pmman_map_t* pmkmap = &pmman_kernel_map;
-
-	// String tables for IDE drive types/ports
-	static char* drive_type[4] = { "ATA", "ATAPI", "SATA", "SATAPI" };
-	static char* drive_bus[2] = { "Master", "Slave" };
-	static char* drive_channel[2] = { "Primary", "Secondary" };
-
-	u8* example = null;
-
-	for (usz i = 0; i < drive_count; ++i) {
-		if (drives[i].type != IDE_ATA) // Only search ATA drives (for now)
-			continue;
-
-		dbg_printf("\n'%s' [%s %s %s] (%ud sectors):\n", drives[i].name,
-				drive_type[drives[i].type], drive_channel[drives[i].channel], drive_bus[drives[i].bus], drives[i].size);
-
-		dfs_it_t it = dfs_it_begin(&drives[i]);
-		while (dfs_iterate(&it)) {
-			dbg_printf(DBG_GRY"File: '%s' (%ud Bytes)\n"DBG_RST, it.name, it.sectors * 512);
-			if (strneq(it.name, "example.bin", 32)) {
-				example = pmman_alloc(pmkmap, it.sectors * 512);
-				dfs_read(example, &it);
-			}
-		}
-	}
-
-	elf32_fh_t* fh = (elf32_fh_t*)example;
-	elf32_ph_t* phs = (elf32_ph_t*)(example + fh->ph_offset);
-
-	for (usz i = 0; i < fh->sh_count; ++i) {
-		elf32_ph_t* ph = &phs[i];
-
-		if (ph->type == ELF_PH_TYPE_LOAD)
-			mcpy8((void*)ph->vaddr, example + ph->offset, ph->mem_size);
-	}
-
-	proc_t* child = proc_create(proc_dummy2);
-	proc_register(child);
-
-	child = proc_create(proc_dummy);
-	proc_register(child);
-
-	proc_exit();
-
-	panic("Reached end of kernel\n");
 }
 

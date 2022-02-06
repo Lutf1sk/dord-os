@@ -10,6 +10,7 @@ struc proc
 	.entry:		resd 1
 	.next:		resd 1
 	.time_end:	resd 1
+	.name:		resd 1
 endstruc
 
 SECTION .text
@@ -51,7 +52,7 @@ proc_switch: ;	void proc_switch(proc_t* proc)
 	ret
 
 proc_startup:
-	pushfd
+	push dword 0x200 | 0x200000
 	call proc_release
 	add esp, 4
 	ret
@@ -72,7 +73,7 @@ proc_init:
 	push dword 0 ; si
 	push dword 0 ; di
 	push dword 0 ; bp
-	push dword 0x200 | 0x2 ; eflags
+	push dword 0 ; eflags
 
 	mov [edi + proc.sp], esp	; Restore stack pointer
 

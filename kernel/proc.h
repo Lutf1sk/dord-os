@@ -12,14 +12,13 @@ struct proc {
 	void* sp;
 	void* entry;
 	struct proc* next;
-	union {
-		u32 time_end;
-	};
+	u32 time_end;
+	char* name;
 } proc_t;
 
 extern proc_t* proc_current;
 
-proc_t* proc_create(void* entry);
+proc_t* proc_create(void* entry, char* name);
 void proc_register(proc_t* proc);
 void proc_schedule(void);
 
@@ -30,7 +29,10 @@ void proc_exit(void);
 void proc_init(proc_t*);
 void proc_switch(proc_t*);
 
-u32 proc_lock(void);
-void proc_release(u32 flags);
+NOREORDER
+volatile u32 proc_lock(void);
+
+NOREORDER
+void proc_release(volatile u32 flags);
 
 #endif

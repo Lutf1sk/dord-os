@@ -20,6 +20,7 @@ typedef size_t usz;
 #define NORETURN __attribute__((noreturn))
 #define FLATTEN __attribute__((flatten))
 #define PACKED __attribute__((packed))
+#define NOREORDER __attribute__((no_reorder))
 
 #define KB(x) (x * 1024L)
 #define MB(x) (KB(x) * 1024L)

@@ -4,11 +4,12 @@
 #include <spinlock.h>
 #include <asm.h>
 
+#include <x86/cpuid.h>
+
 #include <drivers/pit.h>
 
 proc_t* proc_current = null;
 
-// lists
 static proc_t* ready_q = null;
 static proc_t* blocked_q = null;
 
@@ -18,11 +19,13 @@ slock_t sched_lock = SLOCK_INIT();
 
 void panic(char*);
 
-proc_t* proc_create(void* entry) {
+proc_t* proc_create(void* entry, char* name) {
 	u8* new = pmman_alloc(&pmman_kernel_map, PROC_SIZE);
+	mset8(new, 0, PROC_SIZE);
 	proc_t* proc = (proc_t*)new;
 	proc->entry = entry;
 	proc->next = null;
+	proc->name = name;
 
 	u32* stack = (u32*)(new + KB(4));
 
@@ -32,7 +35,7 @@ proc_t* proc_create(void* entry) {
 }
 
 void proc_register(proc_t* proc) {
-	u32 flags = proc_lock();
+	volatile u32 flags = proc_lock();
 
 	proc->next = ready_q;
 	ready_q = proc;
@@ -41,17 +44,18 @@ void proc_register(proc_t* proc) {
 }
 
 void proc_exit(void) {
-	u32 flags = proc_lock();
+	volatile u32 flags = proc_lock();
 
 	pmman_free(&pmman_kernel_map, proc_current, PROC_SIZE);
 	proc_current = null;
+
 	proc_schedule();
 
 	proc_release(flags);
 }
 
 void proc_yield(void) {
-	u32 flags = proc_lock();
+	volatile u32 flags = proc_lock();
 
 	proc_current->time_end = pit_systime_msec;
 
@@ -59,13 +63,14 @@ void proc_yield(void) {
 }
 
 void proc_schedule(void) {
-	if (!ready_q || ready_q == proc_current)
+	if (!ready_q)
 		return;
 
 	if (proc_current) {
 		if (pit_systime_msec < proc_current->time_end)
 			return;
 
+		// Add current process to the end of the waiting queue
 		proc_t** it = &ready_q;
 		while (*it)
 			it = &(*it)->next;
@@ -79,19 +84,28 @@ void proc_schedule(void) {
 
 	next_proc->next = null;
 
+// 	dbg_printf("[CPU%ud] Switching to %s (0x%hd)\n", cpu_lapic_id(), next_proc->name, next_proc);
+// 	proc_t* it = ready_q;
+// 	while (it) {
+// 		dbg_printf("Queued: %s(0x%hd)\n", it->name, it);
+// 		it = it->next;
+// 	}
+
 	proc_switch(next_proc);
 }
 
 u32 proc_lock(void) {
-	u32 flags = getf();
+	volatile u32 flags = getf();
 	cli();
+// 	dbg_printf(DBG_YLW"Locking...\n"DBG_RST);
 	spinlock_lock(&sched_lock);
+// 	dbg_printf(DBG_GRN"Locked\n"DBG_RST);
 	return flags;
 }
 
-void proc_release(u32 flags) {
+void proc_release(volatile u32 flags) {
+// 	dbg_printf(DBG_RED"Unlocking...\n"DBG_RST);
 	spinlock_release(&sched_lock);
-	if (flags & EFLAGS_IF)
-		sti();
+	setf(flags);
 }
 
