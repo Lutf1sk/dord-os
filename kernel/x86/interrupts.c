@@ -91,7 +91,6 @@ void interrupt_handler(u8 intr) {
 			return;
 
 		case IRQ_KB:
-			dbg_printf("keyboard interrupt\n");
 			kb_handle_interrupt();
 			break;
 

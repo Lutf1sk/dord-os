@@ -13,5 +13,8 @@ void vga_initialize(void* vram, u32 res_x, u32 res_y);
 void vga_clear(u32 color);
 
 void vga_put_image(const void* data, i32 pos_x, i32 pos_y, i32 width, i32 height);
+void vga_blend_image(const void* data, i32 x, i32 y, i32 w, i32 h);
+
+void vga_draw_rect(i32 x, i32 y, i32 w, i32 h, u32 clr);
 
 #endif

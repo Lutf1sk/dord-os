@@ -81,7 +81,7 @@ void pmman_initialize(memmap_t* memmap, u32 memmap_count) {
 	pmman_map_t* map = &pmman_kernel_map;
 
 	mset32(map->bits, 0, sizeof(map->bits));
-	map->block_size = PMMAN_BLOCK_SIZE_4K;
+	map->block_size = 14; //PMMAN_BLOCK_SIZE_4K;
 	map->base = 0;
 
 	// Sort memory maps

@@ -68,8 +68,8 @@ bootinf_t boot_info;
 vbe_mib_t mib;
 memmap_t* memmap;
 
-void proc_dummy(void);
-void proc_dummy2(void);
+void proc_wserver(void);
+void proc_wclient(void);
 
 proc_t* kproc;
 
@@ -157,7 +157,10 @@ void kernel_enter(void) {
 
 	// Initialize VGA framebuffer
 	vga_initialize((void*)boot_info.mib->phys_base_addr, boot_info.mib->x_resolution, boot_info.mib->y_resolution);
-	vga_clear(0x0F0F0F);
+	vga_clear(0x000000);
+
+	mouse_x = vga_res_x / 2;
+	mouse_y = vga_res_y / 2;
 
 	// Initialize PIT
 	//pcspk_connect_pit();
@@ -238,24 +241,87 @@ void kernel_enter(void) {
 
 	cli();
 
-	proc_t* child = proc_create(proc_dummy, "Dummy1");
+	proc_t* child = proc_create(proc_wserver, "Dummy1");
 	proc_register(child);
 
-	child = proc_create(proc_dummy2, "Dummy2");
+	child = proc_create(proc_wclient, "Dummy2");
 	proc_register(child);
 
 	proc_schedule();
 }
 
-void proc_dummy(void) {
+// Window server
+
+#define B 0xFFFFFFFF,
+#define W 0xFF000000,
+#define _ 0x00000000,
+
+u32 cursor[24][13] = {
+	{ B _ _ _ _ _ _ _ _ _ _ _ _ },
+	{ B B _ _ _ _ _ _ _ _ _ _ _ },
+	{ B W B _ _ _ _ _ _ _ _ _ _ },
+	{ B W W B _ _ _ _ _ _ _ _ _ },
+	{ B W W W B _ _ _ _ _ _ _ _ },
+	{ B W W W W B _ _ _ _ _ _ _ },
+	{ B W W W W W B _ _ _ _ _ _ },
+	{ B W W W W W W B _ _ _ _ _ },
+	{ B W W W W W W W B _ _ _ _ },
+	{ B W W W W W W W W B _ _ _ },
+	{ B W W W W W W W W W B _ _ },
+	{ B W W W W W W W W W W B _ },
+	{ B W W W W W W B B B B B B },
+	{ B W W W W W W B _ _ _ _ _ },
+	{ B W W B B W W W B _ _ _ _ },
+	{ B W B _ B W W W B _ _ _ _ },
+	{ B B _ _ _ B W W W B _ _ _ },
+	{ B _ _ _ _ B W W W B _ _ _ },
+	{ _ _ _ _ _ _ B B B _ _ _ _ },
+	{ _ _ _ _ _ _ _ _ _ _ _ _ _ },
+};
+
+typedef
+struct win {
+	i32 x, y;
+	i32 w, h;
+	u32* pixel_data;
+} win_t;
+
+win_t w;
+
+void proc_wserver(void) {
+	pmman_map_t* pmkmap = &pmman_kernel_map;
+
+	void* double_buf = pmman_alloc(pmkmap, vga_pixel_count * sizeof(u32));
+	if (!double_buf)
+		panic("Failed to allocate double buffer\n");
+	void* vram = vga_vram;
+	vga_vram = double_buf;
+
+	w.x = 100;
+	w.y = 100;
+	w.w = vga_res_x - 200;
+	w.h = vga_res_y - 200;
+	w.pixel_data = pmman_alloc(pmkmap, vga_pixel_count * sizeof(u32));
+
 	while (1) {
-		vga_vram[(vga_res_x * mouse_y) + mouse_x] = 0xFFFF00;
+		vga_clear(0);
+
+		vga_draw_rect(w.x - 1, w.y, 1, w.h, 0xAE0000);
+		vga_draw_rect(w.x + w.w, w.y, 1, w.h, 0xAE0000);
+		vga_draw_rect(w.x - 1, w.y - 1, w.w + 2, 1, 0xAE0000);
+		vga_draw_rect(w.x - 1, w.y + w.h, w.w + 2, 1, 0xAE0000);
+		vga_put_image(w.pixel_data, w.x, w.y, w.w, w.h);
+
+		vga_blend_image(cursor, mouse_x, mouse_y, 13, 24);
+		mcpy32(vram, double_buf, vga_pixel_count);
+
+		pit_sleep_msec(16);
 	}
 }
 
-void proc_dummy2(void) {
+void proc_wclient(void) {
 	while (1) {
-		vga_vram[(vga_res_x * mouse_y) + mouse_x] = 0x00FFFF;
+		mset32(w.pixel_data, 0x0F0F0F, w.w * w.h);
 	}
 }
 

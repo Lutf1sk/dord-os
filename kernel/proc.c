@@ -21,7 +21,6 @@ void panic(char*);
 
 proc_t* proc_create(void* entry, char* name) {
 	u8* new = pmman_alloc(&pmman_kernel_map, PROC_SIZE);
-	mset8(new, 0, PROC_SIZE);
 	proc_t* proc = (proc_t*)new;
 	proc->entry = entry;
 	proc->next = null;
