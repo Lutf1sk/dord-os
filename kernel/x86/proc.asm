@@ -34,7 +34,7 @@ proc_switch: ;	void proc_switch(proc_t* proc)
 
 	; Set time slice
 	mov edi, [pit_systime_msec]
-	add edi, 2
+	add edi, 8
 	mov [esi + proc.time_end], edi
 
 	; Load new stack pointer

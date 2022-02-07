@@ -241,10 +241,12 @@ void kernel_enter(void) {
 
 	cli();
 
-	proc_t* child = proc_create(proc_wserver, "Dummy1");
+	proc_init_scheduler();
+
+	proc_t* child = proc_create(proc_wserver, "wserver");
 	proc_register(child);
 
-	child = proc_create(proc_wclient, "Dummy2");
+	child = proc_create(proc_wclient, "wclient");
 	proc_register(child);
 
 	proc_schedule();
@@ -306,22 +308,23 @@ void proc_wserver(void) {
 	while (1) {
 		vga_clear(0);
 
-		vga_draw_rect(w.x - 1, w.y, 1, w.h, 0xAE0000);
-		vga_draw_rect(w.x + w.w, w.y, 1, w.h, 0xAE0000);
-		vga_draw_rect(w.x - 1, w.y - 1, w.w + 2, 1, 0xAE0000);
-		vga_draw_rect(w.x - 1, w.y + w.h, w.w + 2, 1, 0xAE0000);
+		vga_draw_rect(w.x - 1, w.y, 1, w.h, 0xAE4030);
+		vga_draw_rect(w.x + w.w, w.y, 1, w.h, 0xAE4030);
+		vga_draw_rect(w.x - 1, w.y - 1, w.w + 2, 1, 0xAE4030);
+		vga_draw_rect(w.x - 1, w.y + w.h, w.w + 2, 1, 0xAE4030);
 		vga_put_image(w.pixel_data, w.x, w.y, w.w, w.h);
 
 		vga_blend_image(cursor, mouse_x, mouse_y, 13, 24);
 		mcpy32(vram, double_buf, vga_pixel_count);
 
-		pit_sleep_msec(16);
+		proc_sleep_msec(16);
 	}
 }
 
 void proc_wclient(void) {
 	while (1) {
 		mset32(w.pixel_data, 0x0F0F0F, w.w * w.h);
+		proc_sleep_msec(16);
 	}
 }
 

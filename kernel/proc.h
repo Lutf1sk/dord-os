@@ -3,9 +3,10 @@
 
 #include <common.h>
 
-#define PROC_RUN	1
-#define PROC_WAIT	2
-#define PROC_SUSP	3
+#define PROC_ACTIVE 0
+#define PROC_READY	1
+#define PROC_SLEEP	2
+#define PROC_IDLE	3
 
 typedef
 struct proc {
@@ -14,6 +15,7 @@ struct proc {
 	struct proc* next;
 	u32 time_end;
 	char* name;
+	u32 state;
 } proc_t;
 
 extern proc_t* proc_current;
@@ -27,6 +29,8 @@ void proc_exit(void);
 
 // proc.asm
 void proc_init(proc_t*);
+
+NOREORDER
 void proc_switch(proc_t*);
 
 NOREORDER
