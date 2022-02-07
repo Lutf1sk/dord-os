@@ -9,7 +9,7 @@ u32 mouse_type = PS2_DEV_GENERIC_MOUSE;
 u32 mouse_packet_size = 3;
 i32 mouse_x = 0, mouse_y = 0, mouse_z = 0;
 
-u8 button_states[5] = {0};
+u8 mouse_button_states[5] = {0};
 
 void mouse_handle_interrupt(void) {
 	static u32 packet_byte = 0;
@@ -29,9 +29,9 @@ void mouse_handle_interrupt(void) {
 
 		u8 p0 = packet[0];
 		// Store available button states
-		button_states[MS_BTN_1] = p0 & MS_CPKT_LMB;
-		button_states[MS_BTN_2] = p0 & MS_CPKT_RMB;
-		button_states[MS_BTN_3] = p0 & MS_CPKT_MMB;
+		mouse_button_states[MS_BTN_1] = p0 & MS_CPKT_LMB;
+		mouse_button_states[MS_BTN_2] = p0 & MS_CPKT_RMB;
+		mouse_button_states[MS_BTN_3] = p0 & MS_CPKT_MMB;
 
 		// Bit shifting magic to sign extend the 9-bit x/y offsets from the packet
 		mouse_x += (i16)((((p0 & MS_CPKT_XSIGN) << 8) | packet[1]) << 8) >> 8;
@@ -45,8 +45,8 @@ void mouse_handle_interrupt(void) {
 
 			u8 p3 = packet[3];
 			// Store available button states
-			button_states[MS_BTN_4] = p3 & MS_5PKT_4MB;
-			button_states[MS_BTN_5] = p3 & MS_5PKT_5MB;
+			mouse_button_states[MS_BTN_4] = p3 & MS_5PKT_4MB;
+			mouse_button_states[MS_BTN_5] = p3 & MS_5PKT_5MB;
 		}
 	}
 }

@@ -20,10 +20,13 @@ struct proc {
 
 extern proc_t* proc_current;
 
+void proc_init_scheduler(void);
+
 proc_t* proc_create(void* entry, char* name);
 void proc_register(proc_t* proc);
 void proc_schedule(void);
 
+void proc_sleep_msec(u32 msec);
 void proc_yield(void);
 void proc_exit(void);
 

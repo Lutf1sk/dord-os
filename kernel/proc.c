@@ -45,21 +45,6 @@ proc_t* proc_create(void* entry, char* name) {
 	return proc;
 }
 
-void proc_sleep_msec(u32 msec) {
-	volatile u32 flags = proc_lock();
-
-	proc_current->time_end = pit_systime_msec + msec;
-
-	proc_current->next = waiting_q;
-	waiting_q = proc_current;
-	proc_current->state = PROC_SLEEP;
-
-// 	dbg_printf("%s sleeping for %udms\n", proc_current->name, msec);
-	proc_schedule();
-
-	proc_release(flags);
-}
-
 void proc_register(proc_t* proc) {
 	volatile u32 flags = proc_lock();
 
@@ -75,6 +60,21 @@ void proc_exit(void) {
 
 	pmman_free(&pmman_kernel_map, proc_current, PROC_SIZE);
 	proc_current = null;
+	proc_schedule();
+
+	proc_release(flags);
+}
+
+void proc_sleep_msec(u32 msec) {
+	volatile u32 flags = proc_lock();
+
+	proc_current->time_end = pit_systime_msec + msec;
+
+	proc_current->next = waiting_q;
+	waiting_q = proc_current;
+	proc_current->state = PROC_SLEEP;
+
+// 	dbg_printf("%s sleeping for %udms\n", proc_current->name, msec);
 	proc_schedule();
 
 	proc_release(flags);

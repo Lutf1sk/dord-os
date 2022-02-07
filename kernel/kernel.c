@@ -282,13 +282,99 @@ u32 cursor[24][13] = {
 };
 
 typedef
-struct win {
+struct rect {
 	i32 x, y;
 	i32 w, h;
+} rect_t;
+
+#define RECT_INIT(x, y, w, h) { (x), (y), (w), (h) }
+#define RECT(x, y, w, h) ((rect_t)RECT_INIT(x, y, w, h))
+
+typedef
+struct win {
+	rect_t r;
 	u32* pixel_data;
+	char* title;
 } win_t;
 
 win_t w;
+
+u32* fg = null;
+i32 fw = 0, fh = 0;
+u32 fpx = 0;
+
+void ws_load_font(char* filename) {
+	pmman_map_t* pmkmap = &pmman_kernel_map;
+
+	fw = 8;
+	fh = 16;
+	fpx = fw * fh;
+
+	// String tables for IDE drive types/ports
+	static char* drive_type[4] = { "ATA", "ATAPI", "SATA", "SATAPI" };
+	static char* drive_bus[2] = { "Master", "Slave" };
+	static char* drive_channel[2] = { "Primary", "Secondary" };
+
+	void* file_data = null;
+
+	for (usz i = 0; i < drive_count; ++i) {
+		if (drives[i].type != IDE_ATA) // Only search ATA drives (for now)
+			continue;
+
+		dbg_printf("\n'%s' [%s %s %s] (%ud sectors):\n", drives[i].name,
+				drive_type[drives[i].type], drive_channel[drives[i].channel], drive_bus[drives[i].bus], drives[i].size);
+
+		dfs_it_t it = dfs_it_begin(&drives[i]);
+		while (dfs_iterate(&it)) {
+			dbg_printf(DBG_GRY"File: '%s' (%ud Bytes)\n"DBG_RST, it.name, it.sectors * 512);
+			if (strneq(it.name, filename, 32)) {
+				file_data = pmman_alloc(pmkmap, it.sectors * 512);
+				dfs_read(file_data, &it);
+			}
+		}
+	}
+
+	fg = pmman_alloc(pmkmap, fpx * sizeof(u32) * 256);
+
+	u8* glyphs = (u8*)file_data + 4;
+	u32* oit = fg;
+	u8* iit = glyphs;
+	for (usz i = 0; i < 256; ++i) {
+		for (usz i = 0; i < fh; ++i) {
+			u8 b = *iit++;
+
+			for (usz i = 0; i < 8; ++i) {
+				if ((b << i) & 0x80)
+					*oit++ = 0xFFD0D0D0;
+				else
+					*oit++ = 0x00000000;
+			}
+		}
+	}
+}
+
+void ws_draw_border(rect_t* r, u32 clr) {
+	vga_draw_rect(r->x, r->y, 1, r->h, clr);
+	vga_draw_rect(r->x + r->w - 1, r->y, 1, r->h, clr);
+	vga_draw_rect(r->x, r->y, r->w, 1, clr);
+	vga_draw_rect(r->x, r->y + r->h - 1, r->w, 1, clr);
+}
+
+void ws_draw_text(i32 x, i32 y, char* str) {
+	char* it = str;
+	while (*it) {
+		vga_blend_image(&fg[fpx * (*it++)], x, y, fw, fh);
+		x += fw;
+	}
+}
+
+void ws_draw_rect(rect_t* r, u32 clr) {
+	vga_draw_rect(r->x, r->y, r->w, r->h, clr);
+}
+
+u8 rect_contains(rect_t* r, i32 x, i32 y) {
+	return (x >= r->x) && (x < r->x + r->w) && (y >= r->y) && (y < r->y + r->h);
+}
 
 void proc_wserver(void) {
 	pmman_map_t* pmkmap = &pmman_kernel_map;
@@ -299,20 +385,42 @@ void proc_wserver(void) {
 	void* vram = vga_vram;
 	vga_vram = double_buf;
 
-	w.x = 100;
-	w.y = 100;
-	w.w = vga_res_x - 200;
-	w.h = vga_res_y - 200;
-	w.pixel_data = pmman_alloc(pmkmap, vga_pixel_count * sizeof(u32));
+	w.r = RECT(100, 100, 800, 600);
+	w.pixel_data = pmman_alloc(pmkmap, w.r.w * w.r.h * sizeof(u32));
+	w.title = "A window title";
+
+	ws_load_font("lat1-16.psf");
+
+	u8 dragged = 0;
+	i32 drag_x = 0, drag_y = 0;
+	i32 drag_wx = 0, drag_wy = 0;
 
 	while (1) {
 		vga_clear(0);
 
-		vga_draw_rect(w.x - 1, w.y, 1, w.h, 0xAE4030);
-		vga_draw_rect(w.x + w.w, w.y, 1, w.h, 0xAE4030);
-		vga_draw_rect(w.x - 1, w.y - 1, w.w + 2, 1, 0xAE4030);
-		vga_draw_rect(w.x - 1, w.y + w.h, w.w + 2, 1, 0xAE4030);
-		vga_put_image(w.pixel_data, w.x, w.y, w.w, w.h);
+		if (dragged) {
+			w.r.x = drag_wx + (mouse_x - drag_x);
+			w.r.y = drag_wy + (mouse_y - drag_y);
+		}
+
+		rect_t hr = RECT(w.r.x - 1, w.r.y - 20, w.r.w + 2, 20);
+
+		if (rect_contains(&hr, mouse_x, mouse_y) && mouse_button_states[MS_BTN_LEFT] && !dragged) {
+			dragged = 1;
+			drag_x = mouse_x;
+			drag_y = mouse_y;
+			drag_wx = w.r.x;
+			drag_wy = w.r.y;
+		}
+		else if (!mouse_button_states[MS_BTN_LEFT])
+			dragged = 0;
+
+		ws_draw_rect(&hr, 0xAE3030);
+		ws_draw_text(w.r.x + 4, w.r.y - 18, w.title);
+
+		rect_t br = RECT(w.r.x - 1, w.r.y - 1, w.r.w + 2, w.r.h + 2);
+		ws_draw_border(&br, 0xAE3030);
+		vga_put_image(w.pixel_data, w.r.x, w.r.y, w.r.w, w.r.h);
 
 		vga_blend_image(cursor, mouse_x, mouse_y, 13, 24);
 		mcpy32(vram, double_buf, vga_pixel_count);
@@ -322,8 +430,11 @@ void proc_wserver(void) {
 }
 
 void proc_wclient(void) {
+	u8 shade = 0x00;
 	while (1) {
-		mset32(w.pixel_data, 0x0F0F0F, w.w * w.h);
+		u32 px_count = w.r.w * w.r.h;
+
+		mset32(w.pixel_data, 0x202020, px_count);
 		proc_sleep_msec(16);
 	}
 }

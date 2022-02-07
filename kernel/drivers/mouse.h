@@ -45,6 +45,7 @@
 #define MS_BTN_MIDDLE	MS_BTN_3
 
 extern i32 mouse_x, mouse_y, mouse_z;
+extern u8 mouse_button_states[5];
 
 void mouse_initialize(u8 port);
 
