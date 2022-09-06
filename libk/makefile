@@ -4,6 +4,7 @@ LIB = libk.a
 OBJECTS = \
 	memory.o \
 	spinlock.o \
+	psf.o \
 	io.o
 
 CC_FLAGS = -nostdlib -ffreestanding -fno-stack-protector -fno-pie -m32

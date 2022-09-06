@@ -6,6 +6,7 @@
 #include <proc.h>
 #include <syscall.h>
 #include <spinlock.h>
+#include <psf.h>
 
 #include <x86/interrupts.h>
 #include <x86/cpuid.h>
@@ -306,16 +307,13 @@ u32 fpx = 0;
 void ws_load_font(char* filename) {
 	pmman_map_t* pmkmap = &pmman_kernel_map;
 
-	fw = 8;
-	fh = 16;
-	fpx = fw * fh;
-
 	// String tables for IDE drive types/ports
 	static char* drive_type[4] = { "ATA", "ATAPI", "SATA", "SATAPI" };
 	static char* drive_bus[2] = { "Master", "Slave" };
 	static char* drive_channel[2] = { "Primary", "Secondary" };
 
 	void* file_data = null;
+	usz filesz = 0;
 
 	for (usz i = 0; i < drive_count; ++i) {
 		if (drives[i].type != IDE_ATA) // Only search ATA drives (for now)
@@ -328,29 +326,22 @@ void ws_load_font(char* filename) {
 		while (dfs_iterate(&it)) {
 			dbg_printf(DBG_GRY"File: '%s' (%ud Bytes)\n"DBG_RST, it.name, it.sectors * 512);
 			if (strneq(it.name, filename, 32)) {
-				file_data = pmman_alloc(pmkmap, it.sectors * 512);
+				filesz = it.sectors * 512;
+				file_data = pmman_alloc(pmkmap, filesz);
 				dfs_read(file_data, &it);
 			}
 		}
 	}
 
-	fg = pmman_alloc(pmkmap, fpx * sizeof(u32) * 256);
+	fw = 8; // !!
+	fh = 16; // !!
+	fpx = fw * fh;
 
-	u8* glyphs = (u8*)file_data + 4;
-	u32* oit = fg;
-	u8* iit = glyphs;
-	for (usz i = 0; i < 256; ++i) {
-		for (usz i = 0; i < fh; ++i) {
-			u8 b = *iit++;
-
-			for (usz i = 0; i < 8; ++i) {
-				if ((b << i) & 0x80)
-					*oit++ = 0xFFD0D0D0;
-				else
-					*oit++ = 0x00000000;
-			}
-		}
-	}
+	void* font_data = pmman_alloc(pmkmap, fpx * sizeof(u32) * 256 + sizeof(font_t));
+	font_t* font = psf_load(font_data, file_data, filesz);
+	if (!font)
+		dbg_printf(DBG_RED"Failed to load font"DBG_RST);
+	fg = font->glyph_data;
 }
 
 void ws_draw_border(rect_t* r, u32 clr) {
