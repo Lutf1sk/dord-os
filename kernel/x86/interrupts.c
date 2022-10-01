@@ -35,29 +35,6 @@ static void NORETURN hang(void) {
 	}
 }
 
-typedef
-struct regs {
-	usz a;
-	usz c;
-	usz d;
-	usz b;
-} regs_t;
-
-usz sys_handler(regs_t* regs) {
-	switch (regs->a) {
-	case 1: // Print
-		dbg_write(null, (void*)regs->c, regs->d);
-		return 1;
-
-	case 2: // Yield
-		proc_yield();
-		return 1;
-
-	default:
-		return 0;
-	}
-}
-
 void interrupt_handler(u8 intr) {
 	if (intr == 0xFF)
 		goto spurious;

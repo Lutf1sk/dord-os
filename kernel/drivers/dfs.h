@@ -1,7 +1,8 @@
 #ifndef DFS_H
 #define DFS_H 1
 
-#include <drivers/ide.h>
+#include <drive.h>
+#include <fs.h>
 
 typedef
 struct PACKED dfs_file_header {
@@ -10,16 +11,12 @@ struct PACKED dfs_file_header {
 } dfs_file_header_t;
 
 typedef
-struct dfs_it {
-	ide_drive_t* drive;
-	u64 lba, sectors, next_lba;
-	char name[32];
-} dfs_it_t;
+struct dfs {
+	fs_t interf;
+	drive_t* drive;
+} dfs_t;
 
-dfs_it_t dfs_it_begin(ide_drive_t* drive);
-
-u8 dfs_iterate(dfs_it_t* it);
-
-void dfs_read(void* dst, dfs_it_t* it);
+err_t dfs_init(dfs_t* fs, drive_t* drive);
+err_t dfs_fread(dfs_t* fs, char* path, void* out_data, usz* out_size);
 
 #endif

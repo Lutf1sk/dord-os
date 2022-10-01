@@ -2,6 +2,7 @@
 #define IDE_H
 
 #include <common.h>
+#include <drive.h>
 
 // Status bits
 #define ATA_SR_BSY	   0x80	   // Busy
@@ -98,6 +99,8 @@
 
 typedef
 struct ide_drive {
+	drive_t interf;
+
 	u8 channel;
 	u8 bus;
 	u8 type;
@@ -115,8 +118,8 @@ struct ide_channel {
 	u16 bmide_port;
 } ide_channel_t;
 
-ide_drive_t* ide_initialize(u32* out_drive_count, u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4);
+ide_drive_t* ide_initialize(u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4, u32* out_drive_count);
 
-void ide_read_drive(ide_drive_t* drive, void* dst, u64 lba, u16 sector_count);
+err_t ide_read_drive(ide_drive_t* drive, u64 lba, u64 sector_count, void* dst);
 
 #endif

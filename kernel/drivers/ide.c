@@ -80,6 +80,7 @@ found:
 
 	// Fill new 'drive' structure with collected info
 	ide_drive_t* drive = &ide_drives[ide_drive_count++];
+	drive->interf.read = (drive_read_callback_t)ide_read_drive;
 	drive->type = type;
 	drive->channel = channel;
 	drive->bus = bus;
@@ -121,7 +122,7 @@ void ide_print_error(u8 err) {
 	if (err & ATA_ER_AMNF)	dbg_printf("- No address mark\n");
 }
 
-ide_drive_t* ide_initialize(u32* out_drive_count, u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4) {
+ide_drive_t* ide_initialize(u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4, u32* out_drive_count) {
 	if (!bar0 || bar0 == 1)
 		bar0 = IDE_ATA_STANDARD_PRIMARY_PORT;
 	if (!bar1 || bar1 == 1)
@@ -153,7 +154,7 @@ ide_drive_t* ide_initialize(u32* out_drive_count, u32 bar0, u32 bar1, u32 bar2, 
 	return ide_drives;
 }
 
-void ide_read_drive(ide_drive_t* drive, void* dst, u64 lba, u16 sector_count) {
+err_t ide_read_drive(ide_drive_t* drive, u64 lba, u64 sector_count, void* dst) {
 	u16 base = ide_channels[drive->channel].base_port, ctrl = ide_channels[drive->channel].ctrl_port;
 
 	// Select drive
@@ -182,10 +183,12 @@ void ide_read_drive(ide_drive_t* drive, void* dst, u64 lba, u16 sector_count) {
 	if (status & ATA_SR_ERR) {
 		u8 err = inb(base + ATA_REG_ERROR);
 		ide_print_error(err);
-		return;
+		return ERR_UNKNHRDW;
 	}
-	if (status & ATA_SR_DF)
+	if (status & ATA_SR_DF) {
 		dbg_printf("ATA_CMD_READ_PIO_EXT: ATA Drive fault\n");
+		return ERR_UNKNHRDW;
+	}
 
 	u16* it = dst;
 	for (u32 i = 0; i < sector_count; ++i) {
@@ -201,5 +204,7 @@ void ide_read_drive(ide_drive_t* drive, void* dst, u64 lba, u16 sector_count) {
 // 	outb(base + ATA_REG_COMMAND, ATA_CMD_CACHE_FLUSH_EXT);
 // 	ide_delay(ctrl);
 // 	ide_wait_bsy(base + ATA_REG_STATUS);
+
+	return OK;
 }
 

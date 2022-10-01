@@ -2,32 +2,30 @@
 
 #include <drivers/dfs.h>
 
-dfs_it_t dfs_it_begin(ide_drive_t* drive) {
-	dfs_it_t it;
-	it.drive = drive;
-	it.next_lba = 1;
-	it.name[0] = 0;
-	return it;
+err_t dfs_init(dfs_t* fs, drive_t* drive) {
+	fs->interf.fread = (fs_fread_callback_t)dfs_fread;
+	fs->drive = drive;
+	return OK;
 }
 
-u8 dfs_iterate(dfs_it_t* it) {
-	if (!it->next_lba)
-		return 0;
-
+err_t dfs_fread(dfs_t* fs, char* path, void* out_data, usz* out_size) {
+	u64 lba = 1;
 	char buf[512];
 	dfs_file_header_t* fh = (dfs_file_header_t*)buf;
+	do {
+		drive_read(fs->drive, lba, 1, buf);
 
-	it->lba = it->next_lba;
+		if (strneq(path, fh->name, 32)) {
+			usz filesz = fh->sectors * 512;
+			*out_size = filesz;
+			if (!out_data)
+				return OK;
+			return drive_read(fs->drive, lba + 1, fh->sectors, out_data);
+		}
 
-	ide_read_drive(it->drive, buf, it->lba, 1);
-	it->next_lba = fh->next_lba;
-	mcpy8(it->name, fh->name, 32);
-	it->sectors = fh->sectors;
+		lba = fh->next_lba;
+	} while (lba);
 
-	return 1;
-}
-
-void dfs_read(void* dst, dfs_it_t* it) {
-	ide_read_drive(it->drive, dst, it->lba + 1, it->sectors);
+	return ERR_NOTFOUND;
 }
 

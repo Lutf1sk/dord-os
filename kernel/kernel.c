@@ -188,10 +188,11 @@ void kernel_enter(void) {
 			dev->reg_data[PCI_HC_CLASS]	== 0x01 &&
 			dev->reg_data[PCI_HC_SUBCLASS] == 0x01)
 		{
-			drives = ide_initialize(&drive_count,
+			drives = ide_initialize(
 				pci_reg32(dev, PCI_H0_BAR0), pci_reg32(dev, PCI_H0_BAR1),
 				pci_reg32(dev, PCI_H0_BAR2), pci_reg32(dev, PCI_H0_BAR3),
-				pci_reg32(dev, PCI_H0_BAR4)
+				pci_reg32(dev, PCI_H0_BAR4),
+				&drive_count
 			);
 			ide_found = 1;
 		}
@@ -240,6 +241,11 @@ void kernel_enter(void) {
 		}
 		spinlock_lock(&ap_init_lock);
 	}
+
+	// Create root filesystem
+	dfs_t dfs_root;
+	dfs_init(&dfs_root, &drives[0].interf);
+	rootfs = &dfs_root;
 
 	cli();
 
@@ -305,50 +311,20 @@ struct win {
 win_t w[16];
 usz win_count = 0;
 
-void* read_file(char* filename, usz* out_size) {
-	// String tables for IDE drive types/ports
-// 	static char* drive_type[4] = { "ATA", "ATAPI", "SATA", "SATAPI" };
-// 	static char* drive_bus[2] = { "Master", "Slave" };
-// 	static char* drive_channel[2] = { "Primary", "Secondary" };
-
+void ws_load_font(char* path) {
 	void* file_data = null;
-	usz filesz = 0;
+	usz file_size = 0;
+	if (fread(path, null, &file_size))
+		panic("Failed to read font file size\n");
+	file_data = pmman_alloc(&pmman_kernel_map, file_size);
+	if (fread(path, file_data, &file_size))
+		panic("Failed to read font file data\n");
 
-	for (usz i = 0; i < drive_count; ++i) {
-		if (drives[i].type != IDE_ATA)
-			continue;
-
-// 		dbg_printf("\n'%s' [%s %s %s] (%ud sectors):\n", drives[i].name,
-// 				drive_type[drives[i].type], drive_channel[drives[i].channel], drive_bus[drives[i].bus], drives[i].size);
-
-		dfs_it_t it = dfs_it_begin(&drives[i]);
-		while (dfs_iterate(&it)) {
-// 			dbg_printf(DBG_GRY"File: '%s' (%ud Bytes)\n"DBG_RST, it.name, it.sectors * 512);
-			if (strneq(it.name, filename, 32)) {
-				filesz = it.sectors * 512;
-				file_data = pmman_alloc(&pmman_kernel_map, filesz);
-				dfs_read(file_data, &it);
-			}
-		}
-	}
-
-	*out_size = filesz;
-	return file_data;
-}
-
-void ws_load_font(char* filename) {
-	usz filesz;
-	void* file_data = read_file(filename, &filesz);
-
-	if (psf_load(file_data, filesz, &font, null))
-		dbg_printf(DBG_RED"Failed to load font"DBG_RST);
-
+	if (psf_load(file_data, file_size, &font, null))
+		dbg_printf(DBG_RED"Failed to load font\n"DBG_RST);
 	void* font_data = pmman_alloc(&pmman_kernel_map, font.glyph_count * font.px_per_glyph * sizeof(u32));
-	if (!font_data)
-		panic("failed to allocate font buffer\n");
-
-	if (psf_load(file_data, filesz, &font, font_data))
-		dbg_printf(DBG_RED"Failed to load font"DBG_RST);
+	if (psf_load(file_data, file_size, &font, font_data))
+		dbg_printf(DBG_RED"Failed to load font\n"DBG_RST);
 }
 
 void ws_draw_border(rect_t* r, u32 clr) {
@@ -402,16 +378,16 @@ void proc_wserver(void) {
 
 	usz focus = 0;
 
-	usz imgsz;
-	void* imgdata = read_file("dord.ppm", &imgsz);
-	img_t img;
-	if (ppm_load(imgdata, imgsz, &img, null) != OK)
-		dbg_printf(DBG_RED"Failed to load image"DBG_RST);
+// 	usz imgsz;
+// 	void* imgdata = read_file("dord.ppm", &imgsz);
+	img_t img = {};
+// 	if (ppm_load(imgdata, imgsz, &img, null) != OK)
+// 		dbg_printf(DBG_RED"Failed to load image"DBG_RST);
 
-	void* pxmap = pmman_alloc(pmkmap, img.width * img.height * sizeof(u32));
+// 	void* pxmap = pmman_alloc(pmkmap, img.width * img.height * sizeof(u32));
 
-	if (ppm_load(imgdata, imgsz, &img, pxmap) != OK)
-		dbg_printf(DBG_RED"Failed to load image"DBG_RST);
+// 	if (ppm_load(imgdata, imgsz, &img, pxmap) != OK)
+// 		dbg_printf(DBG_RED"Failed to load image"DBG_RST);
 
 	while (1) {
 		vga_clear(0);

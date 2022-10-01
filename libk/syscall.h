@@ -3,6 +3,11 @@
 
 #include <common.h>
 
+#define SYS_PRINT	0
+#define SYS_YIELD	1
+#define SYS_FREAD	2
+#define SYS_FWRITE	3
+
 static INLINE
 u32 syscall(u32 a, u32 c, u32 d) {
 	u32 ret;
