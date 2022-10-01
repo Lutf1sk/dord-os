@@ -7,6 +7,7 @@
 #include <syscall.h>
 #include <spinlock.h>
 #include <psf.h>
+#include <ppm.h>
 
 #include <x86/interrupts.h>
 #include <x86/cpuid.h>
@@ -304,42 +305,47 @@ struct win {
 win_t w[16];
 usz win_count = 0;
 
-void ws_load_font(char* filename) {
-	pmman_map_t* pmkmap = &pmman_kernel_map;
-
+void* read_file(char* filename, usz* out_size) {
 	// String tables for IDE drive types/ports
-	static char* drive_type[4] = { "ATA", "ATAPI", "SATA", "SATAPI" };
-	static char* drive_bus[2] = { "Master", "Slave" };
-	static char* drive_channel[2] = { "Primary", "Secondary" };
+// 	static char* drive_type[4] = { "ATA", "ATAPI", "SATA", "SATAPI" };
+// 	static char* drive_bus[2] = { "Master", "Slave" };
+// 	static char* drive_channel[2] = { "Primary", "Secondary" };
 
 	void* file_data = null;
 	usz filesz = 0;
 
 	for (usz i = 0; i < drive_count; ++i) {
-		if (drives[i].type != IDE_ATA) // Only search ATA drives (for now)
+		if (drives[i].type != IDE_ATA)
 			continue;
 
-		dbg_printf("\n'%s' [%s %s %s] (%ud sectors):\n", drives[i].name,
-				drive_type[drives[i].type], drive_channel[drives[i].channel], drive_bus[drives[i].bus], drives[i].size);
+// 		dbg_printf("\n'%s' [%s %s %s] (%ud sectors):\n", drives[i].name,
+// 				drive_type[drives[i].type], drive_channel[drives[i].channel], drive_bus[drives[i].bus], drives[i].size);
 
 		dfs_it_t it = dfs_it_begin(&drives[i]);
 		while (dfs_iterate(&it)) {
-			dbg_printf(DBG_GRY"File: '%s' (%ud Bytes)\n"DBG_RST, it.name, it.sectors * 512);
+// 			dbg_printf(DBG_GRY"File: '%s' (%ud Bytes)\n"DBG_RST, it.name, it.sectors * 512);
 			if (strneq(it.name, filename, 32)) {
 				filesz = it.sectors * 512;
-				file_data = pmman_alloc(pmkmap, filesz);
+				file_data = pmman_alloc(&pmman_kernel_map, filesz);
 				dfs_read(file_data, &it);
 			}
 		}
 	}
 
+	*out_size = filesz;
+	return file_data;
+}
+
+void ws_load_font(char* filename) {
+	usz filesz;
+	void* file_data = read_file(filename, &filesz);
+
 	if (psf_load(file_data, filesz, &font, null))
 		dbg_printf(DBG_RED"Failed to load font"DBG_RST);
 
-	void* font_data = pmman_alloc(pmkmap, font.glyph_count * font.px_per_glyph * sizeof(u32));
+	void* font_data = pmman_alloc(&pmman_kernel_map, font.glyph_count * font.px_per_glyph * sizeof(u32));
 	if (!font_data)
 		panic("failed to allocate font buffer\n");
-	dbg_printf("Glyph data allocated at 0x%hz\n", font_data);
 
 	if (psf_load(file_data, filesz, &font, font_data))
 		dbg_printf(DBG_RED"Failed to load font"DBG_RST);
@@ -396,8 +402,20 @@ void proc_wserver(void) {
 
 	usz focus = 0;
 
+	usz imgsz;
+	void* imgdata = read_file("dord.ppm", &imgsz);
+	img_t img;
+	if (ppm_load(imgdata, imgsz, &img, null) != OK)
+		dbg_printf(DBG_RED"Failed to load image"DBG_RST);
+
+	void* pxmap = pmman_alloc(pmkmap, img.width * img.height * sizeof(u32));
+
+	if (ppm_load(imgdata, imgsz, &img, pxmap) != OK)
+		dbg_printf(DBG_RED"Failed to load image"DBG_RST);
+
 	while (1) {
 		vga_clear(0);
+		vga_put_image(img.px_data, 0, 0, img.width, img.height);
 
 		for (usz i = 0; i < win_count; ++i) {
 			if (w[i].dragged) {

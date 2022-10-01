@@ -47,7 +47,7 @@ LNK = ld
 
 all: $(BIN_DIR)/$(OUT)
 
-$(BIN_DIR)/$(OUT): $(OBJECTS) x86/trampoline.asm
+$(BIN_DIR)/$(OUT): $(OBJECTS) x86/trampoline.asm $(LNK_LIBS)
 	@$(ASM) -fbin x86/trampoline.asm -o x86/trampoline.bin
 	@objcopy -O elf32-i386 -B i386 -I binary x86/trampoline.bin trampoline.o
 	$(LNK) -o "$(BIN_DIR)/$(OUT)" $(OBJECTS) $(LNK_FLAGS) $(LNK_LIBS) trampoline.o
