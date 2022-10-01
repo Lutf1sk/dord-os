@@ -1,4 +1,5 @@
-#include "psf.h"
+#include <psf.h>
+#include <memory.h>
 
 #define _ 0x00000000,
 #define X 0xFFFFFFFF,
@@ -266,18 +267,18 @@ u32 precomp_tab[256][8] = {
 #undef _
 #undef X
 
-font_t* psf_load(void* out, void* data, usz len) {
+err_t psf_load(void* data, usz len, font_t* out_fnt, void* out_data) {
 	if (len < sizeof(u32))
-		return NULL;
+		return ERR_FMTINVAL;
 
 	u32 w, h, glyph_count;
-	u8* it = NULL;
+	u8* it = null;
 
 	if (*(u16*)data == PSF1_MAGIC) {
 		psf1_header_t* head = data;
 
 		if (len < sizeof(psf1_header_t) || head->height == 0)
-			return NULL;
+			return ERR_FMTINVAL;
 
 		w = 8;
 		h = head->height;
@@ -290,12 +291,12 @@ font_t* psf_load(void* out, void* data, usz len) {
 		psf2_header_t* head = data;
 
 		if (len < sizeof(psf2_header_t) || head->version != 0)
-			return NULL;
+			return ERR_FMTINVAL;
 
 		usz glyphtab_size = head->glyph_count * head->glyph_bytes;
 
 		if (len < head->header_size + glyphtab_size || head->width == 0 || head->height == 0)
-			return NULL;
+			return ERR_FMTINVAL;
 
 		w = head->width;
 		h = head->height;
@@ -303,15 +304,18 @@ font_t* psf_load(void* out, void* data, usz len) {
 		it = (u8*)data + head->header_size;
 	}
 	else
-		return NULL;
+		return ERR_FMTINVAL;
 
-	font_t* font = out;
-	font->width = w;
-	font->height = h;
-	font->glyph_count = glyph_count;
-	font->glyph_data = out + sizeof(font_t); // glyph_count * w * h * sizeof(u32)
+	out_fnt->glyph_width = w;
+	out_fnt->glyph_height = h;
+	out_fnt->px_per_glyph = w * h;
+	out_fnt->glyph_count = glyph_count;
+	out_fnt->glyph_data = out_data;
 
-	for (u32* out = font->glyph_data, i = 0; i < glyph_count; ++i) {
+	if (!out_data)
+		return OK;
+
+	for (u32* out = out_fnt->glyph_data, i = 0; i < glyph_count; ++i) {
 		for (usz j = 0; j < h; ++j) {
 			i32 bits = w;
 			while (bits > 0) {
@@ -324,5 +328,5 @@ font_t* psf_load(void* out, void* data, usz len) {
 		}
 	}
 
-	return font;
+	return OK;
 }

@@ -291,18 +291,18 @@ struct rect {
 #define RECT_INIT(x, y, w, h) { (x), (y), (w), (h) }
 #define RECT(x, y, w, h) ((rect_t)RECT_INIT(x, y, w, h))
 
+font_t font;
+
 typedef
 struct win {
 	rect_t r;
 	u32* pixel_data;
 	char* title;
+	u8 dragged;
 } win_t;
 
-win_t w;
-
-u32* fg = null;
-i32 fw = 0, fh = 0;
-u32 fpx = 0;
+win_t w[16];
+usz win_count = 0;
 
 void ws_load_font(char* filename) {
 	pmman_map_t* pmkmap = &pmman_kernel_map;
@@ -333,15 +333,16 @@ void ws_load_font(char* filename) {
 		}
 	}
 
-	fw = 8; // !!
-	fh = 16; // !!
-	fpx = fw * fh;
-
-	void* font_data = pmman_alloc(pmkmap, fpx * sizeof(u32) * 256 + sizeof(font_t));
-	font_t* font = psf_load(font_data, file_data, filesz);
-	if (!font)
+	if (psf_load(file_data, filesz, &font, null))
 		dbg_printf(DBG_RED"Failed to load font"DBG_RST);
-	fg = font->glyph_data;
+
+	void* font_data = pmman_alloc(pmkmap, font.glyph_count * font.px_per_glyph * sizeof(u32));
+	if (!font_data)
+		panic("failed to allocate font buffer\n");
+	dbg_printf("Glyph data allocated at 0x%hz\n", font_data);
+
+	if (psf_load(file_data, filesz, &font, font_data))
+		dbg_printf(DBG_RED"Failed to load font"DBG_RST);
 }
 
 void ws_draw_border(rect_t* r, u32 clr) {
@@ -352,10 +353,10 @@ void ws_draw_border(rect_t* r, u32 clr) {
 }
 
 void ws_draw_text(i32 x, i32 y, char* str) {
-	char* it = str;
+	u8* it = (u8*)str;
 	while (*it) {
-		vga_blend_image(&fg[fpx * (*it++)], x, y, fw, fh);
-		x += fw;
+		vga_blend_image(&font.glyph_data[font.px_per_glyph * (*it++)], x, y, font.glyph_width, font.glyph_height);
+		x += font.glyph_width;
 	}
 }
 
@@ -376,56 +377,91 @@ void proc_wserver(void) {
 	void* vram = vga_vram;
 	vga_vram = double_buf;
 
-	w.r = RECT(100, 100, 800, 600);
-	w.pixel_data = pmman_alloc(pmkmap, w.r.w * w.r.h * sizeof(u32));
-	w.title = "A window title";
+	w[0].r = RECT(100, 100, 800, 600);
+	w[0].pixel_data = pmman_alloc(pmkmap, w[0].r.w * w[0].r.h * sizeof(u32));
+	w[0].title = "A window title";
+	w[0].dragged = 0;
+
+	w[1].r = RECT(100, 100, 400, 300);
+	w[1].pixel_data = pmman_alloc(pmkmap, w[1].r.w * w[1].r.h * sizeof(u32));
+	w[1].title = "Another window title";
+	w[1].dragged = 0;
 
 	ws_load_font("lat1-16.psf");
 
-	u8 dragged = 0;
 	i32 drag_x = 0, drag_y = 0;
 	i32 drag_wx = 0, drag_wy = 0;
+
+	usz win_count = 2;
+
+	usz focus = 0;
 
 	while (1) {
 		vga_clear(0);
 
-		if (dragged) {
-			w.r.x = drag_wx + (mouse_x - drag_x);
-			w.r.y = drag_wy + (mouse_y - drag_y);
+		for (usz i = 0; i < win_count; ++i) {
+			if (w[i].dragged) {
+				w[i].r.x = drag_wx + (mouse_x - drag_x);
+				w[i].r.y = drag_wy + (mouse_y - drag_y);
+			}
+
+			rect_t bounds = RECT(w[i].r.x - 1, w[i].r.y - 20, w[i].r.w + 2, 20 + w[i].r.h + 2);
+
+			if (rect_contains(&bounds, mouse_x, mouse_y)) {
+				if (mouse_button_states[MS_BTN_LEFT]) {
+					win_t win = w[i];
+					mmove8(&w[1], &w[0], i * sizeof(win_t));
+					w[0] = win;
+
+					focus = 0;
+				}
+				else
+					focus = i;
+				break;
+			}
 		}
 
-		rect_t hr = RECT(w.r.x - 1, w.r.y - 20, w.r.w + 2, 20);
+		for (i32 i = win_count - 1; i >= 0; --i) {
+			rect_t hr = RECT(w[i].r.x - 1, w[i].r.y - 20, w[i].r.w + 2, 20);
+			rect_t br = RECT(w[i].r.x - 1, w[i].r.y - 1, w[i].r.w + 2, w[i].r.h + 2);
 
-		if (rect_contains(&hr, mouse_x, mouse_y) && mouse_button_states[MS_BTN_LEFT] && !dragged) {
-			dragged = 1;
-			drag_x = mouse_x;
-			drag_y = mouse_y;
-			drag_wx = w.r.x;
-			drag_wy = w.r.y;
+			u32 bclr = 0x404040;
+
+			if (i == focus) {
+				bclr = 0xAE3030;
+
+				if (rect_contains(&hr, mouse_x, mouse_y) && mouse_button_states[MS_BTN_LEFT] && !w[0].dragged) {
+					w[i].dragged = 1;
+					drag_x = mouse_x;
+					drag_y = mouse_y;
+					drag_wx = w[i].r.x;
+					drag_wy = w[i].r.y;
+				}
+				else if (!mouse_button_states[MS_BTN_LEFT])
+					w[i].dragged = 0;
+			}
+
+			ws_draw_rect(&hr, bclr);
+			ws_draw_text(w[i].r.x + 4, w[i].r.y - 18, w[i].title);
+
+			ws_draw_border(&br, bclr);
+			vga_put_image(w[i].pixel_data, w[i].r.x, w[i].r.y, w[i].r.w, w[i].r.h);
 		}
-		else if (!mouse_button_states[MS_BTN_LEFT])
-			dragged = 0;
-
-		ws_draw_rect(&hr, 0xAE3030);
-		ws_draw_text(w.r.x + 4, w.r.y - 18, w.title);
-
-		rect_t br = RECT(w.r.x - 1, w.r.y - 1, w.r.w + 2, w.r.h + 2);
-		ws_draw_border(&br, 0xAE3030);
-		vga_put_image(w.pixel_data, w.r.x, w.r.y, w.r.w, w.r.h);
 
 		vga_blend_image(cursor, mouse_x, mouse_y, 13, 24);
 		mcpy32(vram, double_buf, vga_pixel_count);
 
 		proc_sleep_msec(16);
+
 	}
 }
 
 void proc_wclient(void) {
 	u8 shade = 0x00;
 	while (1) {
-		u32 px_count = w.r.w * w.r.h;
+		u32 px_count = w->r.w * w->r.h;
 
-		mset32(w.pixel_data, 0x202020, px_count);
+		mset32(w->pixel_data, 0x202020, px_count);
 		proc_sleep_msec(16);
 	}
 }

@@ -1,7 +1,7 @@
 #ifndef PSF_H
 #define PSF_H
 
-#include "common.h"
+#include <err.h>
 
 #define PSF1_MAGIC 0x0436
 #define PSF2_MAGIC 0x864ab572
@@ -40,11 +40,12 @@ struct psf2_header {
 
 typedef
 struct font {
-	u16 width, height;
+	u16 glyph_width, glyph_height;
 	u32 glyph_count;
+	usz px_per_glyph;
 	u32* glyph_data;
 } font_t;
 
-font_t* psf_load(void* out, void* data, usz len);
+err_t psf_load(void* data, usz len, font_t* out_fnt, void* out_data);
 
 #endif
