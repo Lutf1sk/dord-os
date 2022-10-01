@@ -2,27 +2,25 @@
 #include <memory.h>
 #include <debug_io.h>
 
-pmman_map_t pmman_kernel_map; // 4K blocks covering the lowest 4MiB
-
-#define KMAP_SIZE MB(4)
+pmman_map_t pmman_kernel_map;
 
 static INLINE
 void pmman_set_block(u32* map, usz block) {
-	usz index = (block >> 5) & 0x1F;
+	usz index = block >> 5;
 	usz bit = block & 0x1F;
 	map[index] |= ((u32)1 << bit);
 }
 
 static INLINE
 void pmman_clear_block(u32* map, usz block) {
-	usz index = (block >> 5) & 0x1F;
+	usz index = block >> 5;
 	usz bit = block & 0x1F;
 	map[index] &= ~((u32)1 << bit);
 }
 
 static INLINE
 u8 pmman_get_block(u32* map, usz block) {
-	usz index = (block >> 5) & 0x1F;
+	usz index = (block >> 5);
 	usz bit = block & 0x1F;
 	return (map[index] >> bit) & 1;
 }
@@ -80,8 +78,8 @@ void pmman_initialize(memmap_t* memmap, u32 memmap_count) {
 	dbg_puts("\nInitializing physical memory manager\n");
 	pmman_map_t* map = &pmman_kernel_map;
 
-	mset32(map->bits, 0, sizeof(map->bits));
-	map->block_size = 14; //PMMAN_BLOCK_SIZE_4K;
+	mset8(map->bits, 0xFF, sizeof(map->bits));
+	map->block_size = PMMAN_BLOCK_SIZE_SHIFT;
 	map->base = 0;
 
 	// Sort memory maps
@@ -110,13 +108,13 @@ void pmman_initialize(memmap_t* memmap, u32 memmap_count) {
 		u64 base = memmap[i].base, len = memmap[i].len;
 		dbg_printf(DBG_GRY"%s 0x%hq -> 0x%hq (%uq Bytes)\n"DBG_RST, memmap_type_str(memmap[i].type), base, base + len, len);
 
-		if (memmap[i].type == MEMMAP_USABLE || base > KMAP_SIZE)
+		if (memmap[i].type != MEMMAP_USABLE || memmap[i].base >= PMMAN_SIZE)
 			continue;
 
-		if (base + len > KMAP_SIZE)
-			len -= base + len - KMAP_SIZE;
+		if (base + len >= PMMAN_SIZE)
+			len -= base + len - PMMAN_SIZE;
 
-		pmman_mark_range(map, pmman_to_block(map, (void*)(usz)base), pmman_to_blocks(map, len));
+		pmman_clear_range(map, pmman_to_block(map, (void*)(usz)base), pmman_to_blocks(map, len));
 	}
 }
 

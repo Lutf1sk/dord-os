@@ -5,8 +5,10 @@
 
 #include <drivers/memmap.h>
 
-#define PMMAN_BLOCK_SIZE_4K 12
+#define PMMAN_BLOCK_SIZE_SHIFT 14
+#define PMMAN_BLOCK_SIZE (1 << PMMAN_BLOCK_SIZE_SHIFT)
 #define PMMAN_BITS (32*32)
+#define PMMAN_SIZE (PMMAN_BITS * PMMAN_BLOCK_SIZE)
 
 typedef
 struct pmman_map {
@@ -25,6 +27,11 @@ usz pmman_to_block(pmman_map_t* map, void* addr) {
 static INLINE
 usz pmman_to_blocks(pmman_map_t* map, usz len) {
 	return align_fwd(len, 1 << map->block_size) >> map->block_size;
+}
+
+static INLINE
+usz pmman_align(pmman_map_t* map, usz len) {
+	return align_fwd(len, 1 << map->block_size);
 }
 
 void pmman_mark_range(pmman_map_t* map, usz base, usz size);
