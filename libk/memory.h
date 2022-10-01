@@ -6,11 +6,13 @@
 u32 strlen(const char* str);
 u8 strneq(const char* str1, const char* str2, u32 maxlen);
 
-void* mcpy32(void* dst, const void* src, u32 count);
-void* mcpy16(void* dst, const void* src, u32 count);
 void* mcpy8(void* dst, const void* src, u32 count);
+void* mcpy16(void* dst, const void* src, u32 count);
+void* mcpy32(void* dst, const void* src, u32 count);
 
+void* mmove8(void* dst, const void* src, u32 count);
 void* mmove16(void* dst, const void* src, u32 count);
+void* mmove32(void* dst, const void* src, u32 count);
 
 u8 meq8(const void* p1, const void* p2, u32 count);
 

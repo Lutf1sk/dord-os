@@ -19,8 +19,8 @@ u8 strneq(const char* str1, const char* str2, u32 maxlen) {
 	return 1;
 }
 
-void* mcpy32(void* dst, const void* src, u32 count) {
-	__asm__ volatile ("rep movsd" : : "D"(dst), "S"(src), "c"(count) : "memory", "cc");
+void* mcpy8(void* dst, const void* src, u32 count) {
+	__asm__ volatile ("rep movsb" : : "D"(dst), "S"(src), "c"(count) : "memory", "cc");
 	return dst;
 }
 
@@ -29,14 +29,30 @@ void* mcpy16(void* dst, const void* src, u32 count) {
 	return dst;
 }
 
-void* mcpy8(void* dst, const void* src, u32 count) {
-	__asm__ volatile ("rep movsb" : : "D"(dst), "S"(src), "c"(count) : "memory", "cc");
+void* mcpy32(void* dst, const void* src, u32 count) {
+	__asm__ volatile ("rep movsd" : : "D"(dst), "S"(src), "c"(count) : "memory", "cc");
+	return dst;
+}
+
+void* mmove8(void* dst, const void* src, u32 count) {
+	u8* d_it = dst;
+	const u8* s_it = src;
+	while (count--)
+		*(d_it++) = *(s_it++);
 	return dst;
 }
 
 void* mmove16(void* dst, const void* src, u32 count) {
 	u16* d_it = dst;
 	const u16* s_it = src;
+	while (count--)
+		*(d_it++) = *(s_it++);
+	return dst;
+}
+
+void* mmove32(void* dst, const void* src, u32 count) {
+	u32* d_it = dst;
+	const u32* s_it = src;
 	while (count--)
 		*(d_it++) = *(s_it++);
 	return dst;
