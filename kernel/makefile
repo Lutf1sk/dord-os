@@ -33,7 +33,7 @@ OBJECTS = \
 
 LNK_LIBS = ../bin/libk.a
 
-CC_FLAGS = -O2 -masm=intel -I./ -I../libk/ -nostdlib -ffreestanding -fno-stack-protector -fno-pie -fno-pic -m32
+CC_FLAGS = -O2 -mno-avx -masm=intel -I./ -I../libk/ -nostdlib -ffreestanding -fno-stack-protector -fno-pie -fno-pic -m32
 LNK_FLAGS = -T linker.ld -melf_i386
 ASM_FLAGS = -felf32
 
