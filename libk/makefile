@@ -6,6 +6,7 @@ OBJECTS = \
 	spinlock.o \
 	psf.o \
 	ppm.o \
+	render.o \
 	io.o
 
 CC_FLAGS = -I./ -nostdlib -ffreestanding -fno-stack-protector -fno-pie -m32

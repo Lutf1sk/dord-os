@@ -159,10 +159,10 @@ void kernel_enter(void) {
 
 	// Initialize VGA framebuffer
 	vga_initialize((void*)boot_info.mib->phys_base_addr, boot_info.mib->x_resolution, boot_info.mib->y_resolution);
-	vga_clear(0x000000);
+	render_clear(&vga_framebuf, 0x000000);
 
-	mouse_x = vga_res_x / 2;
-	mouse_y = vga_res_y / 2;
+	mouse_x = vga_framebuf.width / 2;
+	mouse_y = vga_framebuf.height / 2;
 
 	// Initialize PIT
 	//pcspk_connect_pit();
@@ -242,12 +242,12 @@ void kernel_enter(void) {
 		spinlock_lock(&ap_init_lock);
 	}
 
+	cli();
+
 	// Create root filesystem
 	dfs_t dfs_root;
 	dfs_init(&dfs_root, &drives[0].interf);
-	rootfs = &dfs_root;
-
-	cli();
+	rootfs = (fs_t*)&dfs_root;
 
 	proc_init_scheduler();
 
@@ -303,7 +303,7 @@ font_t font;
 typedef
 struct win {
 	rect_t r;
-	u32* pixel_data;
+	u32* px_data;
 	char* title;
 	u8 dragged;
 } win_t;
@@ -321,29 +321,48 @@ void ws_load_font(char* path) {
 		panic("Failed to read font file data\n");
 
 	if (psf_load(file_data, file_size, &font, null))
-		dbg_printf(DBG_RED"Failed to load font\n"DBG_RST);
+		panic("Failed to load font\n");
 	void* font_data = pmman_alloc(&pmman_kernel_map, font.glyph_count * font.px_per_glyph * sizeof(u32));
 	if (psf_load(file_data, file_size, &font, font_data))
-		dbg_printf(DBG_RED"Failed to load font\n"DBG_RST);
+		panic("Failed to load font\n");
 }
 
-void ws_draw_border(rect_t* r, u32 clr) {
-	vga_draw_rect(r->x, r->y, 1, r->h, clr);
-	vga_draw_rect(r->x + r->w - 1, r->y, 1, r->h, clr);
-	vga_draw_rect(r->x, r->y, r->w, 1, clr);
-	vga_draw_rect(r->x, r->y + r->h - 1, r->w, 1, clr);
+img_t ws_load_img(char* path) {
+	void* file_data = null;
+	usz file_size = 0;
+	if (fread(path, null, &file_size))
+		panic("Failed to read image file size\n");
+	file_data = pmman_alloc(&pmman_kernel_map, file_size);
+	if (fread(path, file_data, &file_size))
+		panic("Failed to read image file data\n");
+
+	img_t img;
+	if (ppm_load(file_data, file_size, &img, null) != OK)
+		panic("Failed to load image");
+	void* pxmap = pmman_alloc(&pmman_kernel_map, img.width * img.height * sizeof(u32));
+	if (ppm_load(file_data, file_size, &img, pxmap) != OK)
+		panic("Failed to load image");
+
+	return img;
 }
 
-void ws_draw_text(i32 x, i32 y, char* str) {
+void ws_draw_border(framebuf_t* fb, rect_t* r, u32 clr) {
+	render_rect(fb, r->x, r->y, 1, r->h, clr);
+	render_rect(fb, r->x + r->w - 1, r->y, 1, r->h, clr);
+	render_rect(fb, r->x, r->y, r->w, 1, clr);
+	render_rect(fb, r->x, r->y + r->h - 1, r->w, 1, clr);
+}
+
+void ws_draw_text(framebuf_t* fb, i32 x, i32 y, char* str) {
 	u8* it = (u8*)str;
 	while (*it) {
-		vga_blend_image(&font.glyph_data[font.px_per_glyph * (*it++)], x, y, font.glyph_width, font.glyph_height);
+		render_blend_image(fb, &font.glyph_data[font.px_per_glyph * (*it++)], x, y, font.glyph_width, font.glyph_height);
 		x += font.glyph_width;
 	}
 }
 
-void ws_draw_rect(rect_t* r, u32 clr) {
-	vga_draw_rect(r->x, r->y, r->w, r->h, clr);
+void ws_draw_rect(framebuf_t* fb, rect_t* r, u32 clr) {
+	render_rect(fb, r->x, r->y, r->w, r->h, clr);
 }
 
 u8 rect_contains(rect_t* r, i32 x, i32 y) {
@@ -353,45 +372,22 @@ u8 rect_contains(rect_t* r, i32 x, i32 y) {
 void proc_wserver(void) {
 	pmman_map_t* pmkmap = &pmman_kernel_map;
 
-	void* double_buf = pmman_alloc(pmkmap, vga_pixel_count * sizeof(u32));
+	void* double_buf = pmman_alloc(pmkmap, vga_framebuf.px_count * sizeof(u32));
 	if (!double_buf)
 		panic("Failed to allocate double buffer\n");
-	void* vram = vga_vram;
-	vga_vram = double_buf;
 
-	w[0].r = RECT(100, 100, 800, 600);
-	w[0].pixel_data = pmman_alloc(pmkmap, w[0].r.w * w[0].r.h * sizeof(u32));
-	w[0].title = "A window title";
-	w[0].dragged = 0;
-
-	w[1].r = RECT(100, 100, 400, 300);
-	w[1].pixel_data = pmman_alloc(pmkmap, w[1].r.w * w[1].r.h * sizeof(u32));
-	w[1].title = "Another window title";
-	w[1].dragged = 0;
+	framebuf_t fb = vga_framebuf;
+	fb.px_data = double_buf;
 
 	ws_load_font("lat1-16.psf");
 
 	i32 drag_x = 0, drag_y = 0;
 	i32 drag_wx = 0, drag_wy = 0;
 
-	usz win_count = 2;
-
 	usz focus = 0;
 
-// 	usz imgsz;
-// 	void* imgdata = read_file("dord.ppm", &imgsz);
-	img_t img = {};
-// 	if (ppm_load(imgdata, imgsz, &img, null) != OK)
-// 		dbg_printf(DBG_RED"Failed to load image"DBG_RST);
-
-// 	void* pxmap = pmman_alloc(pmkmap, img.width * img.height * sizeof(u32));
-
-// 	if (ppm_load(imgdata, imgsz, &img, pxmap) != OK)
-// 		dbg_printf(DBG_RED"Failed to load image"DBG_RST);
-
 	while (1) {
-		vga_clear(0);
-		vga_put_image(img.px_data, 0, 0, img.width, img.height);
+		render_clear(&fb, 0);
 
 		for (usz i = 0; i < win_count; ++i) {
 			if (w[i].dragged) {
@@ -435,15 +431,15 @@ void proc_wserver(void) {
 					w[i].dragged = 0;
 			}
 
-			ws_draw_rect(&hr, bclr);
-			ws_draw_text(w[i].r.x + 4, w[i].r.y - 18, w[i].title);
+			ws_draw_rect(&fb, &hr, bclr);
+			ws_draw_text(&fb, w[i].r.x + 4, w[i].r.y - 18, w[i].title);
 
-			ws_draw_border(&br, bclr);
-			vga_put_image(w[i].pixel_data, w[i].r.x, w[i].r.y, w[i].r.w, w[i].r.h);
+			ws_draw_border(&fb, &br, bclr);
+			render_put_image(&fb, w[i].px_data, w[i].r.x, w[i].r.y, w[i].r.w, w[i].r.h);
 		}
 
-		vga_blend_image(cursor, mouse_x, mouse_y, 13, 24);
-		mcpy32(vram, double_buf, vga_pixel_count);
+		render_blend_image(&fb, cursor, mouse_x, mouse_y, 13, 24);
+		mcpy32(vga_framebuf.px_data, double_buf, vga_framebuf.px_count);
 
 		proc_sleep_msec(16);
 
@@ -451,11 +447,33 @@ void proc_wserver(void) {
 }
 
 void proc_wclient(void) {
+	w[0].r = RECT(100, 100, 800, 600);
+	w[0].px_data = pmman_alloc(&pmman_kernel_map, w[0].r.w * w[0].r.h * sizeof(u32));
+	w[0].title = "A window title";
+	w[0].dragged = 0;
+
+	w[1].r = RECT(100, 100, 400, 300);
+	w[1].px_data = pmman_alloc(&pmman_kernel_map, w[1].r.w * w[1].r.h * sizeof(u32));
+	w[1].title = "Another window title";
+	w[1].dragged = 0;
+
+	framebuf_t fbs[2] = {
+		{ w[0].r.w, w[0].r.h, w[0].px_data, w[0].r.w * w[0].r.h },
+		{ w[1].r.w, w[1].r.h, w[1].px_data, w[1].r.w * w[1].r.h },
+	};
+
+	win_count = 2;
+
+	img_t img = ws_load_img("dord.ppm");
+
 	u8 shade = 0x00;
 	while (1) {
-		u32 px_count = w->r.w * w->r.h;
-
-		mset32(w->pixel_data, 0x202020, px_count);
+		for (usz i = 0; i < win_count; ++i) {
+			framebuf_t* fb = &fbs[i];
+			render_clear(fb, 0x202020);
+			render_put_image(fb, img.px_data, 0, 0, img.width, img.height);
+			ws_draw_text(fb, img.width, img.height, "Skjut mig");
+		}
 		proc_sleep_msec(16);
 	}
 }
