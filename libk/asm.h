@@ -49,13 +49,13 @@ void io_wait(void) {
 
 
 static INLINE
-void hlt(void) { __asm__ volatile ("hlt\n"); }
+void hlt(void) { asm volatile ("hlt\n"); }
 
 static INLINE NOREORDER
-void cli(void) { __asm__ volatile ("cli\n"); }
+void cli(void) { asm volatile ("cli\n"); }
 
 static INLINE NOREORDER
-void sti(void) { __asm__ volatile ("sti\n"); }
+void sti(void) { asm volatile ("sti\n"); }
 
 
 static INLINE
