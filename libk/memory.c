@@ -1,4 +1,4 @@
-#include "memory.h"
+#include <memory.h>
 
 u32 strlen(const char* str) {
 	const char* it = str;
@@ -17,21 +17,6 @@ u8 strneq(const char* str1, const char* str2, u32 maxlen) {
 		++i;
 	}
 	return 1;
-}
-
-void* mcpy8(void* dst, const void* src, u32 count) {
-	__asm__ volatile ("rep movsb" : : "D"(dst), "S"(src), "c"(count) : "memory", "cc");
-	return dst;
-}
-
-void* mcpy16(void* dst, const void* src, u32 count) {
-	__asm__ volatile ("rep movsw" : : "D"(dst), "S"(src), "c"(count) : "memory", "cc");
-	return dst;
-}
-
-void* mcpy32(void* dst, const void* src, u32 count) {
-	__asm__ volatile ("rep movsd" : : "D"(dst), "S"(src), "c"(count) : "memory", "cc");
-	return dst;
 }
 
 void* mmove8(void* dst, const void* src, u32 count) {
@@ -66,20 +51,5 @@ u8 meq8(const void* p1, const void* p2, u32 bytes) {
 		if (*(it1++) != *(it2++))
 			return 0;
 	return 1;
-}
-
-void* mset8(void* dst, u8 val, u32 count) {
-	__asm__ volatile ("rep stosb" : : "D"(dst), "c"(count), "a"(val) : "memory", "cc");
-	return dst;
-}
-
-void* mset16(void* dst, u16 val, u32 count) {
-	__asm__ volatile ("rep stosw" : : "D"(dst), "c"(count), "a"(val) : "memory", "cc");
-	return dst;
-}
-
-void* mset32(void* dst, u32 val, u32 count) {
-	__asm__ volatile ("rep stosd" : : "D"(dst), "c"(count), "a"(val) : "memory", "cc");
-	return dst;
 }
 
